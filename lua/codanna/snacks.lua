@@ -78,12 +78,20 @@ end
 
 local function create_async_finder(search_fn, min_chars)
   min_chars = min_chars or 3
+  local notified_empty = false
+  local last_query = ""
 
   return function(opts, ctx, cb)
     local query = ctx.filter.search or ""
     if #query < min_chars then
+      notified_empty = false
       cb({})
       return
+    end
+
+    if query ~= last_query then
+      last_query = query
+      notified_empty = false
     end
 
     search_fn(query, opts, function(data, err)
@@ -97,6 +105,16 @@ local function create_async_finder(search_fn, min_chars)
       local results = extract_results(data)
       local items = vim.tbl_map(make_item, results)
       items = vim.tbl_filter(function(i) return i ~= nil end, items)
+
+      if #items == 0 and not notified_empty then
+        notified_empty = true
+        vim.schedule(function()
+          codanna.notify_empty_results(query)
+        end)
+      elseif #items > 0 then
+        notified_empty = false
+      end
+
       cb(items)
     end)
   end
@@ -115,6 +133,13 @@ local function create_static_async_finder(fetch_fn)
       local results = extract_results(data)
       local items = vim.tbl_map(make_item, results)
       items = vim.tbl_filter(function(i) return i ~= nil end, items)
+
+      if #items == 0 then
+        vim.schedule(function()
+          codanna.notify_empty_results(opts.symbol)
+        end)
+      end
+
       cb(items)
     end)
   end

@@ -50,8 +50,9 @@ vim.keymap.set("n", "<leader>ts", function()
   require("telescope").extensions.codanna.semantic_search()
 end, { desc = "Telescope: Codanna Semantic Search" })
 
-print([[
+print(string.format([[
 Codanna.nvim loaded with Telescope!
+Working directory: %s
 
 Commands:
   :CodannaSearch [query]   - Semantic search
@@ -70,6 +71,6 @@ Keymaps:
   <leader>cd - Documents
   <leader>ts - Telescope extension directly
 
-Note: Codanna only indexes supported languages (Rust, Python, JS, TS, etc.)
-      Run 'codanna index <dir>' in a project with supported files first.
-]])
+Supported languages: Rust, Python, JS, TS, Go, Java, C, C++, C#, Swift, Kotlin, PHP, GDScript
+Ensure 'codanna index .' was run in this directory first.
+]], vim.fn.getcwd()))

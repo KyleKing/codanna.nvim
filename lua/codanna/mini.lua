@@ -117,6 +117,7 @@ local function create_live_source(name, search_fn, opts)
   local pending_query = nil
   local debounce_timer = nil
   local is_searching = false
+  local notified_empty = false
 
   local function do_search(query_str)
     if is_searching then
@@ -142,6 +143,13 @@ local function create_live_source(name, search_fn, opts)
         local results = extract_results(data)
         items = vim.tbl_map(make_item, results)
         items = vim.tbl_filter(function(i) return i ~= nil end, items)
+
+        if #items == 0 and not notified_empty then
+          notified_empty = true
+          codanna.notify_empty_results(query_str)
+        elseif #items > 0 then
+          notified_empty = false
+        end
       end
 
       if MiniPick.is_picker_active() then
@@ -171,6 +179,7 @@ local function create_live_source(name, search_fn, opts)
           end))
         else
           items = {}
+          notified_empty = false
           if MiniPick.is_picker_active() then
             MiniPick.set_picker_items(items)
           end
@@ -237,6 +246,10 @@ function M.find_callers(opts)
     local items = vim.tbl_map(make_item, results)
     items = vim.tbl_filter(function(i) return i ~= nil end, items)
 
+    if #items == 0 then
+      codanna.notify_empty_results(symbol)
+    end
+
     MiniPick.start({
       source = {
         name = "Codanna: Callers of " .. symbol,
@@ -262,6 +275,10 @@ function M.get_calls(opts)
     local items = vim.tbl_map(make_item, results)
     items = vim.tbl_filter(function(i) return i ~= nil end, items)
 
+    if #items == 0 then
+      codanna.notify_empty_results(symbol)
+    end
+
     MiniPick.start({
       source = {
         name = "Codanna: Calls from " .. symbol,
@@ -286,6 +303,10 @@ function M.analyze_impact(opts)
     local results = extract_results(data)
     local items = vim.tbl_map(make_item, results)
     items = vim.tbl_filter(function(i) return i ~= nil end, items)
+
+    if #items == 0 then
+      codanna.notify_empty_results(symbol)
+    end
 
     MiniPick.start({
       source = {

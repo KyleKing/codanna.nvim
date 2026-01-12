@@ -7,6 +7,9 @@ M.config = {
 }
 
 local _cache = {}
+local _index_status = nil
+local _index_check_time = 0
+local INDEX_CHECK_INTERVAL_MS = 30000
 
 local function _cache_key(cmd, args)
   return cmd .. ":" .. table.concat(args, ",")
@@ -230,6 +233,67 @@ end
 
 function M.setup(opts)
   M.config = vim.tbl_deep_extend("force", M.config, opts or {})
+end
+
+local function _get_empty_reason(index_info)
+  if not index_info then
+    return "Could not check index status. Ensure 'codanna init' was run in this project."
+  end
+
+  local symbol_count = index_info.symbol_count or 0
+  local file_count = index_info.file_count or 0
+
+  if symbol_count == 0 and file_count == 0 then
+    return "Index is empty. Run 'codanna init' then 'codanna index .' in your project directory."
+  end
+
+  if symbol_count == 0 then
+    return "No symbols found. Ensure project contains supported files (Rust, Python, JS, TS, Go, Java, C, C++, C#, Swift, Kotlin, PHP, GDScript)."
+  end
+
+  return nil
+end
+
+function M.check_index_async(callback)
+  local now = vim.uv.now()
+  if _index_status and (now - _index_check_time) < INDEX_CHECK_INTERVAL_MS then
+    callback(_index_status)
+    return
+  end
+
+  M.get_index_info_async({}, function(data, err)
+    if err then
+      _index_status = nil
+      callback(nil)
+      return
+    end
+    _index_status = data
+    _index_check_time = vim.uv.now()
+    callback(data)
+  end)
+end
+
+function M.notify_empty_results(query, callback)
+  M.check_index_async(function(index_info)
+    local reason = _get_empty_reason(index_info)
+    if reason then
+      vim.notify("Codanna: " .. reason, vim.log.levels.WARN)
+    elseif query and #query >= 3 then
+      vim.notify("Codanna: No results for '" .. query .. "'", vim.log.levels.INFO)
+    end
+    if callback then
+      callback(index_info)
+    end
+  end)
+end
+
+function M.get_index_status()
+  return _index_status
+end
+
+function M.invalidate_index_cache()
+  _index_status = nil
+  _index_check_time = 0
 end
 
 return M

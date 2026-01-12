@@ -1,18 +1,33 @@
-.PHONY: test-telescope test-mini test-snacks clean deps
+.PHONY: test-telescope test-mini test-snacks clean deps test-project index-test-project
 
 NVIM ?= nvim
+TEST_PROJECT ?= .test-deps/codanna
 
 # Test with different picker backends
+# Usage: make test-telescope PROJECT=/path/to/project
 test-telescope:
-	$(NVIM) --clean -u test/configs/minimal_telescope.lua .
+	cd $(or $(PROJECT),$(TEST_PROJECT)) && $(NVIM) --clean -u $(CURDIR)/test/configs/minimal_telescope.lua .
 
 test-mini:
-	$(NVIM) --clean -u test/configs/minimal_mini.lua .
+	cd $(or $(PROJECT),$(TEST_PROJECT)) && $(NVIM) --clean -u $(CURDIR)/test/configs/minimal_mini.lua .
 
 test-snacks:
-	$(NVIM) --clean -u test/configs/minimal_snacks.lua .
+	cd $(or $(PROJECT),$(TEST_PROJECT)) && $(NVIM) --clean -u $(CURDIR)/test/configs/minimal_snacks.lua .
 
-# Install test dependencies
+# Clone codanna repo for testing (it's Rust, a supported language)
+test-project:
+	@mkdir -p .test-deps
+	@test -d $(TEST_PROJECT) || git clone --depth=1 https://github.com/bartolli/codanna $(TEST_PROJECT)
+	@echo "Test project cloned to $(TEST_PROJECT)"
+	@echo "Run 'make index-test-project' to index it with codanna"
+
+# Index the test project with codanna
+index-test-project: test-project
+	@echo "Indexing $(TEST_PROJECT)..."
+	cd $(TEST_PROJECT) && codanna index .
+	@echo "Done! Now run 'make test-telescope', 'make test-mini', or 'make test-snacks'"
+
+# Install test dependencies (picker plugins)
 deps:
 	@mkdir -p .test-deps
 	@test -d .test-deps/plenary.nvim || git clone --depth=1 https://github.com/nvim-lua/plenary.nvim .test-deps/plenary.nvim

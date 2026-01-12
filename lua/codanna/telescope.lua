@@ -105,6 +105,7 @@ local function create_live_picker(title, search_fn, opts)
   local debounce_timer = nil
   local last_query = ""
   local pending_query = nil
+  local notified_empty = false
 
   local function refresh_picker()
     if picker_obj then
@@ -121,6 +122,7 @@ local function create_live_picker(title, search_fn, opts)
   local function do_search(query)
     if #query < 3 then
       results = {}
+      notified_empty = false
       refresh_picker()
       return
     end
@@ -135,6 +137,12 @@ local function create_live_picker(title, search_fn, opts)
         results = {}
       else
         results = extract_results(data)
+        if #results == 0 and not notified_empty then
+          notified_empty = true
+          codanna.notify_empty_results(query)
+        elseif #results > 0 then
+          notified_empty = false
+        end
       end
       refresh_picker()
     end)
@@ -238,6 +246,10 @@ function M.find_callers(opts)
 
     local results = extract_results(data)
 
+    if #results == 0 then
+      codanna.notify_empty_results(symbol)
+    end
+
     pickers.new(opts, {
       prompt_title = "Codanna: Callers of " .. symbol,
       finder = finders.new_table({
@@ -268,6 +280,10 @@ function M.get_calls(opts)
 
     local results = extract_results(data)
 
+    if #results == 0 then
+      codanna.notify_empty_results(symbol)
+    end
+
     pickers.new(opts, {
       prompt_title = "Codanna: Calls from " .. symbol,
       finder = finders.new_table({
@@ -297,6 +313,10 @@ function M.analyze_impact(opts)
     end
 
     local results = extract_results(data)
+
+    if #results == 0 then
+      codanna.notify_empty_results(symbol)
+    end
 
     pickers.new(opts, {
       prompt_title = "Codanna: Impact of " .. symbol,
