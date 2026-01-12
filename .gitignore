@@ -1,0 +1,3 @@
+.test-deps/
+*.log
+.luarc.json
