@@ -7,6 +7,10 @@ local codanna = require("codanna.core")
 
 local M = {}
 
+M.config = {
+  debounce_ms = 150,
+}
+
 local function make_item(result)
   local filename = result.file or result.path
   local lnum = result.line or result.lnum or 1
@@ -56,45 +60,100 @@ local function file_preview(buf_id, item)
   end
 end
 
+local function create_live_source(name, search_fn, opts)
+  local items = {}
+  local last_query = ""
+  local pending_query = nil
+  local debounce_timer = nil
+  local is_searching = false
+
+  local function do_search(query_str)
+    if is_searching then
+      pending_query = query_str
+      return
+    end
+
+    is_searching = true
+    search_fn(query_str, opts, function(data, err)
+      is_searching = false
+
+      if pending_query and pending_query ~= query_str then
+        local next_query = pending_query
+        pending_query = nil
+        do_search(next_query)
+        return
+      end
+
+      if err then
+        vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
+        items = {}
+      else
+        items = vim.tbl_map(make_item, data or {})
+      end
+
+      if MiniPick.is_picker_active() then
+        MiniPick.set_picker_items(items)
+      end
+    end)
+  end
+
+  return {
+    name = name,
+    items = {},
+    match = function(stritems, indices, query)
+      local query_str = table.concat(query, "")
+
+      if query_str ~= last_query then
+        last_query = query_str
+
+        if debounce_timer then
+          debounce_timer:stop()
+        else
+          debounce_timer = vim.uv.new_timer()
+        end
+
+        if #query_str >= 3 then
+          debounce_timer:start(M.config.debounce_ms, 0, vim.schedule_wrap(function()
+            do_search(query_str)
+          end))
+        else
+          items = {}
+          if MiniPick.is_picker_active() then
+            MiniPick.set_picker_items(items)
+          end
+        end
+      end
+
+      local result = {}
+      for i = 1, #items do
+        table.insert(result, i)
+      end
+      return result
+    end,
+    show = function(buf_id, items_to_show, query)
+      local lines = vim.tbl_map(function(item)
+        if item.path then
+          return string.format("%s:%d - %s", vim.fn.fnamemodify(item.path, ":~:."), item.lnum or 1, item.text)
+        end
+        return item.text
+      end, items_to_show)
+      vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, lines)
+    end,
+    preview = file_preview,
+    choose = default_choose,
+  }
+end
+
 function M.semantic_search(opts)
   opts = opts or {}
-  local last_query = ""
-  local items = {}
-
   MiniPick.start({
-    source = {
-      name = "Codanna: Semantic Search",
-      match = function(stritems, indices, query)
-        local query_str = table.concat(query, "")
-        if query_str ~= last_query and #query_str >= 3 then
-          last_query = query_str
-          local data, err = codanna.semantic_search(query_str, { limit = opts.limit or 50 })
-          if err then
-            vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
-            items = {}
-          else
-            items = vim.tbl_map(make_item, data or {})
-          end
-          MiniPick.set_picker_items(items)
-        end
-        local result = {}
-        for i = 1, #items do
-          table.insert(result, i)
-        end
-        return result
+    source = create_live_source(
+      "Codanna: Semantic Search",
+      function(query, o, callback)
+        codanna.semantic_search_async(query, { limit = o.limit or 50 }, callback)
       end,
-      show = function(buf_id, items_to_show, query)
-        local lines = vim.tbl_map(function(item)
-          if item.path then
-            return string.format("%s:%d - %s", vim.fn.fnamemodify(item.path, ":~:."), item.lnum or 1, item.text)
-          end
-          return item.text
-        end, items_to_show)
-        vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, lines)
-      end,
-      preview = file_preview,
-      choose = default_choose,
-    },
+      opts
+    ),
   })
 end
 
@@ -102,106 +161,80 @@ function M.find_callers(opts)
   opts = opts or {}
   local symbol = opts.symbol or vim.fn.expand("<cword>")
 
-  local data, err = codanna.find_callers(symbol)
-  if err then
-    vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
-    return
-  end
+  codanna.find_callers_async(symbol, {}, function(data, err)
+    if err then
+      vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
+      return
+    end
 
-  local items = vim.tbl_map(make_item, data or {})
+    local items = vim.tbl_map(make_item, data or {})
 
-  MiniPick.start({
-    source = {
-      name = "Codanna: Callers of " .. symbol,
-      items = items,
-      preview = file_preview,
-      choose = default_choose,
-    },
-  })
+    MiniPick.start({
+      source = {
+        name = "Codanna: Callers of " .. symbol,
+        items = items,
+        preview = file_preview,
+        choose = default_choose,
+      },
+    })
+  end)
 end
 
 function M.find_implementations(opts)
   opts = opts or {}
   local symbol = opts.symbol or vim.fn.expand("<cword>")
 
-  local data, err = codanna.find_implementations(symbol)
-  if err then
-    vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
-    return
-  end
+  codanna.find_implementations_async(symbol, {}, function(data, err)
+    if err then
+      vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
+      return
+    end
 
-  local items = vim.tbl_map(make_item, data or {})
+    local items = vim.tbl_map(make_item, data or {})
 
-  MiniPick.start({
-    source = {
-      name = "Codanna: Implementations of " .. symbol,
-      items = items,
-      preview = file_preview,
-      choose = default_choose,
-    },
-  })
+    MiniPick.start({
+      source = {
+        name = "Codanna: Implementations of " .. symbol,
+        items = items,
+        preview = file_preview,
+        choose = default_choose,
+      },
+    })
+  end)
 end
 
 function M.symbols(opts)
   opts = opts or {}
 
-  local data, err = codanna.list_symbols({ file = opts.file })
-  if err then
-    vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
-    return
-  end
+  codanna.list_symbols_async(opts, function(data, err)
+    if err then
+      vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
+      return
+    end
 
-  local items = vim.tbl_map(make_item, data or {})
+    local items = vim.tbl_map(make_item, data or {})
 
-  MiniPick.start({
-    source = {
-      name = "Codanna: Symbols",
-      items = items,
-      preview = file_preview,
-      choose = default_choose,
-    },
-  })
+    MiniPick.start({
+      source = {
+        name = "Codanna: Symbols",
+        items = items,
+        preview = file_preview,
+        choose = default_choose,
+      },
+    })
+  end)
 end
 
 function M.documents(opts)
   opts = opts or {}
-  local last_query = ""
-  local items = {}
-
   MiniPick.start({
-    source = {
-      name = "Codanna: Documents",
-      match = function(stritems, indices, query)
-        local query_str = table.concat(query, "")
-        if query_str ~= last_query and #query_str >= 3 then
-          last_query = query_str
-          local data, err = codanna.search_documents(query_str, { limit = opts.limit or 50 })
-          if err then
-            vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
-            items = {}
-          else
-            items = vim.tbl_map(make_item, data or {})
-          end
-          MiniPick.set_picker_items(items)
-        end
-        local result = {}
-        for i = 1, #items do
-          table.insert(result, i)
-        end
-        return result
+    source = create_live_source(
+      "Codanna: Documents",
+      function(query, o, callback)
+        codanna.search_documents_async(query, { limit = o.limit or 50 }, callback)
       end,
-      show = function(buf_id, items_to_show, query)
-        local lines = vim.tbl_map(function(item)
-          if item.path then
-            return string.format("%s:%d - %s", vim.fn.fnamemodify(item.path, ":~:."), item.lnum or 1, item.text)
-          end
-          return item.text
-        end, items_to_show)
-        vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, lines)
-      end,
-      preview = file_preview,
-      choose = default_choose,
-    },
+      opts
+    ),
   })
 end
 

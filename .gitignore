@@ -1,3 +1,4 @@
 .test-deps/
 *.log
 .luarc.json
+.codanna/index/

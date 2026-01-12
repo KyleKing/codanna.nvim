@@ -7,6 +7,10 @@ local codanna = require("codanna.core")
 
 local M = {}
 
+M.config = {
+  debounce_ms = 150,
+}
+
 local function make_item(result)
   local filename = result.file or result.path
   local lnum = result.line or result.lnum or 1
@@ -21,87 +25,98 @@ local function make_item(result)
   }
 end
 
+local function create_async_finder(search_fn, min_chars)
+  min_chars = min_chars or 3
+
+  return function(opts, ctx, cb)
+    local query = ctx.filter.search or ""
+    if #query < min_chars then
+      cb({})
+      return
+    end
+
+    search_fn(query, opts, function(data, err)
+      if err then
+        vim.schedule(function()
+          vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
+        end)
+        cb({})
+        return
+      end
+      cb(vim.tbl_map(make_item, data or {}))
+    end)
+  end
+end
+
+local function create_static_async_finder(fetch_fn)
+  return function(opts, ctx, cb)
+    fetch_fn(opts, function(data, err)
+      if err then
+        vim.schedule(function()
+          vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
+        end)
+        cb({})
+        return
+      end
+      cb(vim.tbl_map(make_item, data or {}))
+    end)
+  end
+end
+
 M.sources = {
   codanna_semantic = {
     title = "Codanna: Semantic Search",
-    finder = function(opts, ctx)
-      local query = ctx.filter.search or ""
-      if #query < 3 then
-        return {}
-      end
-      local data, err = codanna.semantic_search(query, { limit = opts.limit or 50 })
-      if err then
-        vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
-        return {}
-      end
-      return vim.tbl_map(make_item, data or {})
-    end,
+    finder = create_async_finder(function(query, opts, callback)
+      codanna.semantic_search_async(query, { limit = opts.limit or 50 }, callback)
+    end),
     format = "file",
     preview = "file",
     supports_live = true,
+    live = {
+      debounce = M.config.debounce_ms,
+    },
   },
 
   codanna_callers = {
     title = "Codanna: Find Callers",
-    finder = function(opts, ctx)
+    finder = create_static_async_finder(function(opts, callback)
       local symbol = opts.symbol or vim.fn.expand("<cword>")
-      local data, err = codanna.find_callers(symbol)
-      if err then
-        vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
-        return {}
-      end
-      return vim.tbl_map(make_item, data or {})
-    end,
+      codanna.find_callers_async(symbol, {}, callback)
+    end),
     format = "file",
     preview = "file",
   },
 
   codanna_implementations = {
     title = "Codanna: Find Implementations",
-    finder = function(opts, ctx)
+    finder = create_static_async_finder(function(opts, callback)
       local symbol = opts.symbol or vim.fn.expand("<cword>")
-      local data, err = codanna.find_implementations(symbol)
-      if err then
-        vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
-        return {}
-      end
-      return vim.tbl_map(make_item, data or {})
-    end,
+      codanna.find_implementations_async(symbol, {}, callback)
+    end),
     format = "file",
     preview = "file",
   },
 
   codanna_symbols = {
     title = "Codanna: Symbols",
-    finder = function(opts, ctx)
-      local data, err = codanna.list_symbols({ file = opts.file })
-      if err then
-        vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
-        return {}
-      end
-      return vim.tbl_map(make_item, data or {})
-    end,
+    finder = create_static_async_finder(function(opts, callback)
+      codanna.list_symbols_async({ file = opts.file }, callback)
+    end),
     format = "file",
     preview = "file",
   },
 
   codanna_documents = {
     title = "Codanna: Documents",
-    finder = function(opts, ctx)
-      local query = ctx.filter.search or ""
-      if #query < 3 then
-        return {}
-      end
-      local data, err = codanna.search_documents(query, { limit = opts.limit or 50 })
-      if err then
-        vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
-        return {}
-      end
-      return vim.tbl_map(make_item, data or {})
-    end,
+    finder = create_async_finder(function(query, opts, callback)
+      codanna.search_documents_async(query, { limit = opts.limit or 50 }, callback)
+    end),
     format = "file",
     preview = "file",
     supports_live = true,
+    live = {
+      debounce = M.config.debounce_ms,
+    },
   },
 }
 
