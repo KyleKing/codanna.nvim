@@ -17,23 +17,62 @@ M.config = {
   debounce_ms = 150,
 }
 
-local function make_entry(item)
-  local display = item.name or item.symbol or item.title or "unknown"
-  local filename = item.file or item.path
-  local lnum = item.line or item.lnum or 1
-  local col = item.column or item.col or 0
+local function normalize_result(item)
+  if not item then
+    return nil
+  end
 
-  if filename then
-    display = string.format("%s:%d - %s", vim.fn.fnamemodify(filename, ":~:."), lnum, display)
+  if item[1] and type(item[1]) == "table" then
+    item = item[1]
+  end
+
+  local filename = item.file_path or item.file or item.path
+  local lnum = 1
+  local col = 0
+
+  if item.range then
+    lnum = (item.range.start_line or 0) + 1
+    col = item.range.start_column or 0
+  elseif item.line ~= nil then
+    lnum = item.line + 1
+    col = item.column or 0
+  elseif item.lnum then
+    lnum = item.lnum
+    col = item.col or 0
+  end
+
+  return {
+    name = item.name or item.symbol or item.title or "unknown",
+    kind = item.kind,
+    filename = filename,
+    lnum = lnum,
+    col = col,
+    signature = item.signature,
+    score = item.score,
+  }
+end
+
+local function make_entry(item)
+  local norm = normalize_result(item)
+  if not norm then
+    return nil
+  end
+
+  local display = norm.name
+  if norm.kind then
+    display = string.format("[%s] %s", norm.kind, norm.name)
+  end
+  if norm.filename then
+    display = string.format("%s:%d - %s", vim.fn.fnamemodify(norm.filename, ":~:."), norm.lnum, display)
   end
 
   return {
     value = item,
     display = display,
-    ordinal = display,
-    filename = filename,
-    lnum = lnum,
-    col = col,
+    ordinal = norm.name,
+    filename = norm.filename,
+    lnum = norm.lnum,
+    col = norm.col,
   }
 end
 
@@ -44,6 +83,19 @@ local function goto_selection(prompt_bufnr)
     vim.cmd("edit " .. vim.fn.fnameescape(selection.filename))
     vim.api.nvim_win_set_cursor(0, { selection.lnum, selection.col })
   end
+end
+
+local function extract_results(data)
+  if not data then
+    return {}
+  end
+  if vim.islist(data) then
+    return data
+  end
+  if data.results then
+    return data.results
+  end
+  return {}
 end
 
 local function create_live_picker(title, search_fn, opts)
@@ -79,10 +131,10 @@ local function create_live_picker(title, search_fn, opts)
       end
 
       if err then
-        vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
+        vim.notify("Codanna: " .. err, vim.log.levels.WARN)
         results = {}
       else
-        results = data or {}
+        results = extract_results(data)
       end
       refresh_picker()
     end)
@@ -163,20 +215,33 @@ function M.semantic_search(opts)
   )
 end
 
+function M.search_symbols(opts)
+  opts = opts or {}
+  create_live_picker(
+    "Codanna: Search Symbols",
+    function(query, o, callback)
+      codanna.search_symbols_async(query, { limit = o.limit or 50, kind = o.kind }, callback)
+    end,
+    opts
+  )
+end
+
 function M.find_callers(opts)
   opts = opts or {}
   local symbol = opts.symbol or vim.fn.expand("<cword>")
 
   codanna.find_callers_async(symbol, {}, function(data, err)
     if err then
-      vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
+      vim.notify("Codanna: " .. err, vim.log.levels.WARN)
       return
     end
+
+    local results = extract_results(data)
 
     pickers.new(opts, {
       prompt_title = "Codanna: Callers of " .. symbol,
       finder = finders.new_table({
-        results = data or {},
+        results = results,
         entry_maker = make_entry,
       }),
       sorter = conf.generic_sorter(opts),
@@ -191,20 +256,22 @@ function M.find_callers(opts)
   end)
 end
 
-function M.find_implementations(opts)
+function M.get_calls(opts)
   opts = opts or {}
   local symbol = opts.symbol or vim.fn.expand("<cword>")
 
-  codanna.find_implementations_async(symbol, {}, function(data, err)
+  codanna.get_calls_async(symbol, {}, function(data, err)
     if err then
-      vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
+      vim.notify("Codanna: " .. err, vim.log.levels.WARN)
       return
     end
 
+    local results = extract_results(data)
+
     pickers.new(opts, {
-      prompt_title = "Codanna: Implementations of " .. symbol,
+      prompt_title = "Codanna: Calls from " .. symbol,
       finder = finders.new_table({
-        results = data or {},
+        results = results,
         entry_maker = make_entry,
       }),
       sorter = conf.generic_sorter(opts),
@@ -219,19 +286,22 @@ function M.find_implementations(opts)
   end)
 end
 
-function M.symbols(opts)
+function M.analyze_impact(opts)
   opts = opts or {}
+  local symbol = opts.symbol or vim.fn.expand("<cword>")
 
-  codanna.list_symbols_async(opts, function(data, err)
+  codanna.analyze_impact_async(symbol, {}, function(data, err)
     if err then
-      vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
+      vim.notify("Codanna: " .. err, vim.log.levels.WARN)
       return
     end
 
+    local results = extract_results(data)
+
     pickers.new(opts, {
-      prompt_title = "Codanna: Symbols",
+      prompt_title = "Codanna: Impact of " .. symbol,
       finder = finders.new_table({
-        results = data or {},
+        results = results,
         entry_maker = make_entry,
       }),
       sorter = conf.generic_sorter(opts),

@@ -28,6 +28,19 @@ function M.clear_cache()
   _cache = {}
 end
 
+local function parse_response(stdout)
+  local ok, parsed = pcall(vim.json.decode, stdout)
+  if not ok then
+    return nil, "Failed to parse JSON response"
+  end
+
+  if parsed.status == "error" then
+    return nil, parsed.message or "Unknown error"
+  end
+
+  return parsed.data, nil
+end
+
 function M.exec(cmd, args, opts)
   opts = opts or {}
   local cache_key = _cache_key(cmd, args)
@@ -39,7 +52,7 @@ function M.exec(cmd, args, opts)
     end
   end
 
-  local full_args = { M.config.codanna_path, cmd }
+  local full_args = { M.config.codanna_path, cmd, "--json" }
   vim.list_extend(full_args, args or {})
 
   local result = vim.system(full_args, { text = true, timeout = M.config.timeout_ms }):wait()
@@ -49,17 +62,32 @@ function M.exec(cmd, args, opts)
     return nil, err
   end
 
-  local ok, parsed = pcall(vim.json.decode, result.stdout)
-  if not ok then
-    return { raw = result.stdout }, nil
+  local lines = vim.split(result.stdout or "", "\n")
+  local json_start = nil
+  for i, line in ipairs(lines) do
+    if line:match("^%s*{") then
+      json_start = i
+      break
+    end
   end
 
-  _set_cached(cache_key, parsed)
-  return parsed, nil
+  if not json_start then
+    return nil, "No JSON found in response"
+  end
+
+  local json_str = table.concat(vim.list_slice(lines, json_start), "\n")
+  local data, err = parse_response(json_str)
+
+  if err then
+    return nil, err
+  end
+
+  _set_cached(cache_key, data)
+  return data, nil
 end
 
 function M.exec_async(cmd, args, callback)
-  local full_args = { M.config.codanna_path, cmd }
+  local full_args = { M.config.codanna_path, cmd, "--json" }
   vim.list_extend(full_args, args or {})
 
   vim.system(full_args, { text = true, timeout = M.config.timeout_ms }, function(result)
@@ -69,13 +97,23 @@ function M.exec_async(cmd, args, callback)
         return
       end
 
-      local ok, parsed = pcall(vim.json.decode, result.stdout)
-      if not ok then
-        callback({ raw = result.stdout }, nil)
+      local lines = vim.split(result.stdout or "", "\n")
+      local json_start = nil
+      for i, line in ipairs(lines) do
+        if line:match("^%s*{") then
+          json_start = i
+          break
+        end
+      end
+
+      if not json_start then
+        callback(nil, "No JSON found in response")
         return
       end
 
-      callback(parsed, nil)
+      local json_str = table.concat(vim.list_slice(lines, json_start), "\n")
+      local data, err = parse_response(json_str)
+      callback(data, err)
     end)
   end)
 end
@@ -98,6 +136,40 @@ function M.semantic_search_async(query, opts, callback)
   M.exec_async("mcp", args, callback)
 end
 
+function M.search_symbols(query, opts)
+  opts = opts or {}
+  local args = { "search_symbols", "query:" .. query }
+  if opts.kind then
+    table.insert(args, "kind:" .. opts.kind)
+  end
+  if opts.limit then
+    table.insert(args, "limit:" .. opts.limit)
+  end
+  return M.exec("mcp", args, opts)
+end
+
+function M.search_symbols_async(query, opts, callback)
+  opts = opts or {}
+  local args = { "search_symbols", "query:" .. query }
+  if opts.kind then
+    table.insert(args, "kind:" .. opts.kind)
+  end
+  if opts.limit then
+    table.insert(args, "limit:" .. opts.limit)
+  end
+  M.exec_async("mcp", args, callback)
+end
+
+function M.find_symbol(name, opts)
+  opts = opts or {}
+  return M.exec("mcp", { "find_symbol", name }, opts)
+end
+
+function M.find_symbol_async(name, opts, callback)
+  opts = opts or {}
+  M.exec_async("mcp", { "find_symbol", name }, callback)
+end
+
 function M.find_callers(symbol, opts)
   opts = opts or {}
   return M.exec("mcp", { "find_callers", symbol }, opts)
@@ -108,32 +180,24 @@ function M.find_callers_async(symbol, opts, callback)
   M.exec_async("mcp", { "find_callers", symbol }, callback)
 end
 
-function M.find_implementations(symbol, opts)
+function M.get_calls(symbol, opts)
   opts = opts or {}
-  return M.exec("mcp", { "find_implementations", symbol }, opts)
+  return M.exec("mcp", { "get_calls", symbol }, opts)
 end
 
-function M.find_implementations_async(symbol, opts, callback)
+function M.get_calls_async(symbol, opts, callback)
   opts = opts or {}
-  M.exec_async("mcp", { "find_implementations", symbol }, callback)
+  M.exec_async("mcp", { "get_calls", symbol }, callback)
 end
 
-function M.list_symbols(opts)
+function M.analyze_impact(symbol, opts)
   opts = opts or {}
-  local args = { "list_symbols" }
-  if opts.file then
-    table.insert(args, "file:" .. opts.file)
-  end
-  return M.exec("mcp", args, opts)
+  return M.exec("mcp", { "analyze_impact", symbol }, opts)
 end
 
-function M.list_symbols_async(opts, callback)
+function M.analyze_impact_async(symbol, opts, callback)
   opts = opts or {}
-  local args = { "list_symbols" }
-  if opts.file then
-    table.insert(args, "file:" .. opts.file)
-  end
-  M.exec_async("mcp", args, callback)
+  M.exec_async("mcp", { "analyze_impact", symbol }, callback)
 end
 
 function M.search_documents(query, opts)
@@ -152,6 +216,16 @@ function M.search_documents_async(query, opts, callback)
     table.insert(args, "limit:" .. opts.limit)
   end
   M.exec_async("mcp", args, callback)
+end
+
+function M.get_index_info(opts)
+  opts = opts or {}
+  return M.exec("mcp", { "get_index_info" }, opts)
+end
+
+function M.get_index_info_async(opts, callback)
+  opts = opts or {}
+  M.exec_async("mcp", { "get_index_info" }, callback)
 end
 
 function M.setup(opts)

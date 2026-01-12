@@ -11,18 +11,69 @@ M.config = {
   debounce_ms = 150,
 }
 
-local function make_item(result)
-  local filename = result.file or result.path
-  local lnum = result.line or result.lnum or 1
-  local col = result.column or result.col or 0
-  local name = result.name or result.symbol or result.title or "unknown"
+local function normalize_result(item)
+  if not item then
+    return nil
+  end
+
+  if item[1] and type(item[1]) == "table" then
+    item = item[1]
+  end
+
+  local filename = item.file_path or item.file or item.path
+  local lnum = 1
+  local col = 0
+
+  if item.range then
+    lnum = (item.range.start_line or 0) + 1
+    col = item.range.start_column or 0
+  elseif item.line ~= nil then
+    lnum = item.line + 1
+    col = item.column or 0
+  elseif item.lnum then
+    lnum = item.lnum
+    col = item.col or 0
+  end
 
   return {
-    text = name,
+    name = item.name or item.symbol or item.title or "unknown",
+    kind = item.kind,
     file = filename,
-    pos = { lnum, col },
+    lnum = lnum,
+    col = col,
+  }
+end
+
+local function make_item(result)
+  local norm = normalize_result(result)
+  if not norm then
+    return nil
+  end
+
+  local text = norm.name
+  if norm.kind then
+    text = string.format("[%s] %s", norm.kind, norm.name)
+  end
+
+  return {
+    text = text,
+    file = norm.file,
+    pos = { norm.lnum, norm.col },
     _result = result,
   }
+end
+
+local function extract_results(data)
+  if not data then
+    return {}
+  end
+  if vim.islist(data) then
+    return data
+  end
+  if data.results then
+    return data.results
+  end
+  return {}
 end
 
 local function create_async_finder(search_fn, min_chars)
@@ -38,12 +89,15 @@ local function create_async_finder(search_fn, min_chars)
     search_fn(query, opts, function(data, err)
       if err then
         vim.schedule(function()
-          vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
+          vim.notify("Codanna: " .. err, vim.log.levels.WARN)
         end)
         cb({})
         return
       end
-      cb(vim.tbl_map(make_item, data or {}))
+      local results = extract_results(data)
+      local items = vim.tbl_map(make_item, results)
+      items = vim.tbl_filter(function(i) return i ~= nil end, items)
+      cb(items)
     end)
   end
 end
@@ -53,12 +107,15 @@ local function create_static_async_finder(fetch_fn)
     fetch_fn(opts, function(data, err)
       if err then
         vim.schedule(function()
-          vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
+          vim.notify("Codanna: " .. err, vim.log.levels.WARN)
         end)
         cb({})
         return
       end
-      cb(vim.tbl_map(make_item, data or {}))
+      local results = extract_results(data)
+      local items = vim.tbl_map(make_item, results)
+      items = vim.tbl_filter(function(i) return i ~= nil end, items)
+      cb(items)
     end)
   end
 end
@@ -68,6 +125,19 @@ M.sources = {
     title = "Codanna: Semantic Search",
     finder = create_async_finder(function(query, opts, callback)
       codanna.semantic_search_async(query, { limit = opts.limit or 50 }, callback)
+    end),
+    format = "file",
+    preview = "file",
+    supports_live = true,
+    live = {
+      debounce = M.config.debounce_ms,
+    },
+  },
+
+  codanna_symbols = {
+    title = "Codanna: Search Symbols",
+    finder = create_async_finder(function(query, opts, callback)
+      codanna.search_symbols_async(query, { limit = opts.limit or 50, kind = opts.kind }, callback)
     end),
     format = "file",
     preview = "file",
@@ -87,20 +157,21 @@ M.sources = {
     preview = "file",
   },
 
-  codanna_implementations = {
-    title = "Codanna: Find Implementations",
+  codanna_calls = {
+    title = "Codanna: Get Calls",
     finder = create_static_async_finder(function(opts, callback)
       local symbol = opts.symbol or vim.fn.expand("<cword>")
-      codanna.find_implementations_async(symbol, {}, callback)
+      codanna.get_calls_async(symbol, {}, callback)
     end),
     format = "file",
     preview = "file",
   },
 
-  codanna_symbols = {
-    title = "Codanna: Symbols",
+  codanna_impact = {
+    title = "Codanna: Analyze Impact",
     finder = create_static_async_finder(function(opts, callback)
-      codanna.list_symbols_async({ file = opts.file }, callback)
+      local symbol = opts.symbol or vim.fn.expand("<cword>")
+      codanna.analyze_impact_async(symbol, {}, callback)
     end),
     format = "file",
     preview = "file",
@@ -125,21 +196,27 @@ function M.semantic_search(opts)
   Snacks.picker.pick("codanna_semantic", opts)
 end
 
+function M.search_symbols(opts)
+  opts = opts or {}
+  Snacks.picker.pick("codanna_symbols", opts)
+end
+
 function M.find_callers(opts)
   opts = opts or {}
   opts.symbol = opts.symbol or vim.fn.expand("<cword>")
   Snacks.picker.pick("codanna_callers", opts)
 end
 
-function M.find_implementations(opts)
+function M.get_calls(opts)
   opts = opts or {}
   opts.symbol = opts.symbol or vim.fn.expand("<cword>")
-  Snacks.picker.pick("codanna_implementations", opts)
+  Snacks.picker.pick("codanna_calls", opts)
 end
 
-function M.symbols(opts)
+function M.analyze_impact(opts)
   opts = opts or {}
-  Snacks.picker.pick("codanna_symbols", opts)
+  opts.symbol = opts.symbol or vim.fn.expand("<cword>")
+  Snacks.picker.pick("codanna_impact", opts)
 end
 
 function M.documents(opts)

@@ -38,9 +38,10 @@ require("codanna").setup({
 })
 
 vim.keymap.set("n", "<leader>cs", "<cmd>CodannaSearch<cr>", { desc = "Codanna: Semantic Search" })
+vim.keymap.set("n", "<leader>cy", "<cmd>CodannaSymbols<cr>", { desc = "Codanna: Search Symbols" })
 vim.keymap.set("n", "<leader>cc", "<cmd>CodannaCallers<cr>", { desc = "Codanna: Find Callers" })
-vim.keymap.set("n", "<leader>ci", "<cmd>CodannaImplementations<cr>", { desc = "Codanna: Find Implementations" })
-vim.keymap.set("n", "<leader>co", "<cmd>CodannaSymbols<cr>", { desc = "Codanna: Symbols" })
+vim.keymap.set("n", "<leader>cC", "<cmd>CodannaCalls<cr>", { desc = "Codanna: Get Calls" })
+vim.keymap.set("n", "<leader>ci", "<cmd>CodannaImpact<cr>", { desc = "Codanna: Analyze Impact" })
 vim.keymap.set("n", "<leader>cd", "<cmd>CodannaDocuments<cr>", { desc = "Codanna: Documents" })
 
 vim.keymap.set("n", "<leader>ss", function()
@@ -51,17 +52,22 @@ print([[
 Codanna.nvim loaded with snacks.nvim picker!
 
 Commands:
-  :CodannaSearch [query]     - Semantic search
-  :CodannaCallers [symbol]   - Find callers
-  :CodannaImplementations    - Find implementations
-  :CodannaSymbols [file]     - List symbols
-  :CodannaDocuments [query]  - Search documents
+  :CodannaSearch [query]   - Semantic search
+  :CodannaSymbols [query]  - Search symbols
+  :CodannaCallers [symbol] - Find callers
+  :CodannaCalls [symbol]   - Get calls from symbol
+  :CodannaImpact [symbol]  - Analyze impact
+  :CodannaDocuments [query]- Search documents
 
 Keymaps:
   <leader>cs - Semantic Search
+  <leader>cy - Search Symbols
   <leader>cc - Find Callers
-  <leader>ci - Find Implementations
-  <leader>co - Symbols
+  <leader>cC - Get Calls
+  <leader>ci - Analyze Impact
   <leader>cd - Documents
   <leader>ss - Snacks picker directly
+
+Note: Codanna only indexes supported languages (Rust, Python, JS, TS, etc.)
+      Run 'codanna index <dir>' in a project with supported files first.
 ]])

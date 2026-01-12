@@ -50,6 +50,15 @@ function M.semantic_search(opts)
   picker.semantic_search(opts)
 end
 
+function M.search_symbols(opts)
+  local picker, name = get_picker()
+  if not picker then
+    vim.notify("No picker available (install snacks.nvim, telescope.nvim, or mini.pick)", vim.log.levels.ERROR)
+    return
+  end
+  picker.search_symbols(opts)
+end
+
 function M.find_callers(opts)
   local picker, name = get_picker()
   if not picker then
@@ -59,22 +68,22 @@ function M.find_callers(opts)
   picker.find_callers(opts)
 end
 
-function M.find_implementations(opts)
+function M.get_calls(opts)
   local picker, name = get_picker()
   if not picker then
     vim.notify("No picker available (install snacks.nvim, telescope.nvim, or mini.pick)", vim.log.levels.ERROR)
     return
   end
-  picker.find_implementations(opts)
+  picker.get_calls(opts)
 end
 
-function M.symbols(opts)
+function M.analyze_impact(opts)
   local picker, name = get_picker()
   if not picker then
     vim.notify("No picker available (install snacks.nvim, telescope.nvim, or mini.pick)", vim.log.levels.ERROR)
     return
   end
-  picker.symbols(opts)
+  picker.analyze_impact(opts)
 end
 
 function M.documents(opts)

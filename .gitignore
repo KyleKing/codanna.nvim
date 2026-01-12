@@ -1,4 +1,6 @@
-.test-deps/
 *.log
-.luarc.json
+.codanna/.project-id
 .codanna/index/
+.fastembed_cache
+.luarc.json
+.test-deps/

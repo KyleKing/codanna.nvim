@@ -11,19 +11,70 @@ M.config = {
   debounce_ms = 150,
 }
 
-local function make_item(result)
-  local filename = result.file or result.path
-  local lnum = result.line or result.lnum or 1
-  local col = result.column or result.col or 0
-  local name = result.name or result.symbol or result.title or "unknown"
+local function normalize_result(item)
+  if not item then
+    return nil
+  end
+
+  if item[1] and type(item[1]) == "table" then
+    item = item[1]
+  end
+
+  local filename = item.file_path or item.file or item.path
+  local lnum = 1
+  local col = 0
+
+  if item.range then
+    lnum = (item.range.start_line or 0) + 1
+    col = item.range.start_column or 0
+  elseif item.line ~= nil then
+    lnum = item.line + 1
+    col = item.column or 0
+  elseif item.lnum then
+    lnum = item.lnum
+    col = item.col or 0
+  end
 
   return {
-    text = name,
+    name = item.name or item.symbol or item.title or "unknown",
+    kind = item.kind,
     path = filename,
     lnum = lnum,
     col = col,
+  }
+end
+
+local function make_item(result)
+  local norm = normalize_result(result)
+  if not norm then
+    return nil
+  end
+
+  local text = norm.name
+  if norm.kind then
+    text = string.format("[%s] %s", norm.kind, norm.name)
+  end
+
+  return {
+    text = text,
+    path = norm.path,
+    lnum = norm.lnum,
+    col = norm.col,
     _result = result,
   }
+end
+
+local function extract_results(data)
+  if not data then
+    return {}
+  end
+  if vim.islist(data) then
+    return data
+  end
+  if data.results then
+    return data.results
+  end
+  return {}
 end
 
 local function default_choose(item)
@@ -85,10 +136,12 @@ local function create_live_source(name, search_fn, opts)
       end
 
       if err then
-        vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
+        vim.notify("Codanna: " .. err, vim.log.levels.WARN)
         items = {}
       else
-        items = vim.tbl_map(make_item, data or {})
+        local results = extract_results(data)
+        items = vim.tbl_map(make_item, results)
+        items = vim.tbl_filter(function(i) return i ~= nil end, items)
       end
 
       if MiniPick.is_picker_active() then
@@ -157,17 +210,32 @@ function M.semantic_search(opts)
   })
 end
 
+function M.search_symbols(opts)
+  opts = opts or {}
+  MiniPick.start({
+    source = create_live_source(
+      "Codanna: Search Symbols",
+      function(query, o, callback)
+        codanna.search_symbols_async(query, { limit = o.limit or 50, kind = o.kind }, callback)
+      end,
+      opts
+    ),
+  })
+end
+
 function M.find_callers(opts)
   opts = opts or {}
   local symbol = opts.symbol or vim.fn.expand("<cword>")
 
   codanna.find_callers_async(symbol, {}, function(data, err)
     if err then
-      vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
+      vim.notify("Codanna: " .. err, vim.log.levels.WARN)
       return
     end
 
-    local items = vim.tbl_map(make_item, data or {})
+    local results = extract_results(data)
+    local items = vim.tbl_map(make_item, results)
+    items = vim.tbl_filter(function(i) return i ~= nil end, items)
 
     MiniPick.start({
       source = {
@@ -180,21 +248,23 @@ function M.find_callers(opts)
   end)
 end
 
-function M.find_implementations(opts)
+function M.get_calls(opts)
   opts = opts or {}
   local symbol = opts.symbol or vim.fn.expand("<cword>")
 
-  codanna.find_implementations_async(symbol, {}, function(data, err)
+  codanna.get_calls_async(symbol, {}, function(data, err)
     if err then
-      vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
+      vim.notify("Codanna: " .. err, vim.log.levels.WARN)
       return
     end
 
-    local items = vim.tbl_map(make_item, data or {})
+    local results = extract_results(data)
+    local items = vim.tbl_map(make_item, results)
+    items = vim.tbl_filter(function(i) return i ~= nil end, items)
 
     MiniPick.start({
       source = {
-        name = "Codanna: Implementations of " .. symbol,
+        name = "Codanna: Calls from " .. symbol,
         items = items,
         preview = file_preview,
         choose = default_choose,
@@ -203,20 +273,23 @@ function M.find_implementations(opts)
   end)
 end
 
-function M.symbols(opts)
+function M.analyze_impact(opts)
   opts = opts or {}
+  local symbol = opts.symbol or vim.fn.expand("<cword>")
 
-  codanna.list_symbols_async(opts, function(data, err)
+  codanna.analyze_impact_async(symbol, {}, function(data, err)
     if err then
-      vim.notify("Codanna error: " .. err, vim.log.levels.ERROR)
+      vim.notify("Codanna: " .. err, vim.log.levels.WARN)
       return
     end
 
-    local items = vim.tbl_map(make_item, data or {})
+    local results = extract_results(data)
+    local items = vim.tbl_map(make_item, results)
+    items = vim.tbl_filter(function(i) return i ~= nil end, items)
 
     MiniPick.start({
       source = {
-        name = "Codanna: Symbols",
+        name = "Codanna: Impact of " .. symbol,
         items = items,
         preview = file_preview,
         choose = default_choose,
