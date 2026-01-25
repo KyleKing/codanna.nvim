@@ -222,15 +222,24 @@ describe("codanna.utils", function()
       assert.is_not.equals(key1, key2)
     end)
 
-    it("handles special characters in args", function()
+    it("handles special characters in args without collision", function()
       -- This was a bug in the original implementation
-      local key1 = utils.make_cache_key("search", { "foo:bar" })
-      local key2 = utils.make_cache_key("search", { "foo", "bar" })
+      -- Now fixed: different args should produce different keys
+      local key1 = utils.make_cache_key("search", { "foo:bar,baz" })
+      local key2 = utils.make_cache_key("search", { "foo:bar", "baz" })
+      local key3 = utils.make_cache_key("search", { "foo", "bar,baz" })
       assert.is_not.equals(key1, key2)
+      assert.is_not.equals(key1, key3)
+      assert.is_not.equals(key2, key3)
     end)
 
     it("handles empty args", function()
       local key = utils.make_cache_key("search", {})
+      assert.is_not_nil(key)
+    end)
+
+    it("handles nil args", function()
+      local key = utils.make_cache_key("search", nil)
       assert.is_not_nil(key)
     end)
   end)

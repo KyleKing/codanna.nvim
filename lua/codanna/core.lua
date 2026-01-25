@@ -13,6 +13,9 @@ M.config = {
 }
 
 --- Simple LRU cache with maximum size limit
+--- Note: Uses linear search for LRU updates (O(n) on cache hit).
+--- This is acceptable for small cache sizes (100 entries).
+--- For larger caches, consider a doubly-linked list implementation.
 local _cache = {}
 local _cache_order = {} -- Track insertion order for LRU
 local MAX_CACHE_SIZE = 100

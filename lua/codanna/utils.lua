@@ -139,11 +139,20 @@ function M.make_cache_key(cmd, args)
   -- Use vim.json.encode for reliable serialization
   -- This handles special characters and nested structures
   local ok, key = pcall(vim.json.encode, { cmd = cmd, args = args })
-  if not ok then
-    -- Fallback to simple concatenation if JSON encoding fails
-    return cmd .. ":" .. table.concat(args or {}, ",")
+  if ok then
+    return key
   end
-  return key
+  
+  -- Fallback: use a delimiter unlikely to appear in arguments
+  -- and escape it if it does appear
+  local delimiter = "\0" -- null byte, unlikely in normal strings
+  local escaped_args = {}
+  for _, arg in ipairs(args or {}) do
+    -- Convert to string and escape the delimiter
+    local str = tostring(arg):gsub("\0", "\0\0")
+    table.insert(escaped_args, str)
+  end
+  return cmd .. delimiter .. table.concat(escaped_args, delimiter)
 end
 
 --- Parse JSON response from codanna CLI output
