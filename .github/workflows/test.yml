@@ -57,7 +57,7 @@ jobs:
         nvim-version: [stable]
     
     env:
-      CODANNA_VERSION: "0.1.12"
+      CODANNA_VERSION: "0.9.13"
     
     steps:
       - name: Checkout code
@@ -69,17 +69,56 @@ jobs:
           neovim: true
           version: ${{ matrix.nvim-version }}
       
-      - name: Cache Rust/Cargo
+      - name: Cache codanna binary
+        id: cache-codanna
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-codanna-${{ env.CODANNA_VERSION }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-codanna-
+          path: ~/.local/bin/codanna
+          key: ${{ runner.os }}-${{ runner.arch }}-codanna-${{ env.CODANNA_VERSION }}
+      
+      - name: Install codanna CLI from binary
+        if: steps.cache-codanna.outputs.cache-hit != 'true'
+        run: |
+          VERSION="${CODANNA_VERSION}"
+          
+          # Detect platform and architecture
+          OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          ARCH="$(uname -m)"
+          
+          if [ "$OS" = "linux" ]; then
+            PLATFORM="linux-x64"
+          elif [ "$OS" = "darwin" ]; then
+            if [ "$ARCH" = "arm64" ]; then
+              PLATFORM="macos-arm64"
+            else
+              PLATFORM="macos-x64"
+            fi
+          else
+            echo "Unsupported OS: $OS"
+            exit 1
+          fi
+          
+          # Download and extract binary
+          TARBALL="codanna-${VERSION}-${PLATFORM}.tar.xz"
+          URL="https://github.com/bartolli/codanna/releases/download/v${VERSION}/${TARBALL}"
+          
+          echo "Downloading codanna from $URL..."
+          curl -L -o "/tmp/${TARBALL}" "$URL"
+          
+          # Extract binary
+          mkdir -p ~/.local/bin
+          tar -xf "/tmp/${TARBALL}" -C ~/.local/bin
+          chmod +x ~/.local/bin/codanna
+          
+          echo "Installed codanna to ~/.local/bin/codanna"
+      
+      - name: Add codanna to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Verify codanna installation
+        run: |
+          codanna --version
+          echo "Codanna installed successfully"
       
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -96,19 +135,6 @@ jobs:
           key: ${{ runner.os }}-test-repos-v1
           restore-keys: |
             ${{ runner.os }}-test-repos-
-      
-      - name: Install Rust (for building codanna)
-        uses: dtolnay/rust-toolchain@stable
-      
-      - name: Install codanna CLI
-        run: |
-          if ! command -v codanna &> /dev/null || [[ "$(codanna --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')" != "$CODANNA_VERSION" ]]; then
-            echo "Installing codanna $CODANNA_VERSION..."
-            cargo install codanna --version $CODANNA_VERSION --locked
-          else
-            echo "codanna $CODANNA_VERSION already installed"
-          fi
-          codanna --version
       
       - name: Setup test repositories
         run: make setup-test-repos

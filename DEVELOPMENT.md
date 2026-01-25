@@ -92,8 +92,8 @@ make test-telescope PROJECT=/path/to/your/project
 The project uses GitHub Actions for continuous integration:
 - **Unit Tests Job**: Runs on Ubuntu and macOS with stable and nightly Neovim
 - **Integration Tests Job**: Runs on Ubuntu and macOS with stable Neovim
-  - Installs specific codanna CLI version (v0.1.12)
-  - Caches Rust/Cargo, dependencies, and test repositories
+  - Installs codanna CLI v0.9.13 from GitHub releases (binary)
+  - Caches codanna binary, dependencies, and test repositories
   - Tests against real indexed Flask (Python) and Express (JavaScript) repositories
 - Checks code formatting (on Ubuntu stable only)
 
