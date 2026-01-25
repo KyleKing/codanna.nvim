@@ -1,7 +1,12 @@
-.PHONY: test-telescope test-mini test-snacks clean deps test-project index-test-project
+.PHONY: test-telescope test-mini test-snacks clean deps test-project index-test-project test lint format
 
 NVIM ?= nvim
 TEST_PROJECT ?= .test-deps/codanna
+
+# Run automated tests with plenary
+test: deps
+	$(NVIM) --headless --noplugin -u test/minimal_init.lua \
+		-c "PlenaryBustedDirectory test/spec/ { minimal_init = 'test/minimal_init.lua' }"
 
 # Test with different picker backends
 # Usage: make test-telescope PROJECT=/path/to/project

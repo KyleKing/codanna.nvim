@@ -1,0 +1,221 @@
+# Development Guide
+
+This guide is for contributors who want to develop and test codanna.nvim.
+
+## Setup Development Environment
+
+1. Clone the repository:
+```bash
+git clone https://github.com/kyleking/codanna.nvim
+cd codanna.nvim
+```
+
+2. Install development dependencies:
+```bash
+make deps
+```
+
+This will install:
+- plenary.nvim (for testing)
+- telescope.nvim (for testing Telescope integration)
+- mini.nvim (for testing mini.pick integration)
+- snacks.nvim (for testing Snacks integration)
+
+## Running Tests
+
+### Automated Unit Tests
+
+Run the test suite with:
+```bash
+make test
+```
+
+This runs all unit tests in `test/spec/` using plenary.nvim's busted test runner.
+
+### Manual Integration Testing
+
+Test with different picker backends using a real project:
+
+```bash
+# Clone and index a test project
+make test-project
+make index-test-project
+
+# Test with Telescope
+make test-telescope
+
+# Test with mini.pick
+make test-mini
+
+# Test with snacks.nvim
+make test-snacks
+```
+
+Or test with your own project:
+```bash
+make test-telescope PROJECT=/path/to/your/project
+```
+
+## Code Quality
+
+### Linting
+
+Check code style with stylua:
+```bash
+make lint
+```
+
+### Formatting
+
+Format code with stylua:
+```bash
+make format
+```
+
+## Project Structure
+
+```
+codanna.nvim/
+├── lua/
+│   ├── codanna/
+│   │   ├── init.lua          # Main module, picker orchestration
+│   │   ├── core.lua          # Core API, codanna CLI wrapper
+│   │   ├── utils.lua         # Shared utilities
+│   │   ├── telescope.lua     # Telescope picker implementation
+│   │   ├── mini.lua          # mini.pick implementation
+│   │   └── snacks.lua        # snacks.nvim implementation
+│   └── telescope/
+│       └── _extensions/
+│           └── codanna.lua   # Telescope extension registration
+├── plugin/
+│   └── codanna.lua           # User commands registration
+├── test/
+│   ├── spec/                 # Unit tests
+│   │   ├── utils_spec.lua
+│   │   └── core_spec.lua
+│   ├── configs/              # Manual test configs
+│   │   ├── minimal_telescope.lua
+│   │   ├── minimal_mini.lua
+│   │   └── minimal_snacks.lua
+│   └── minimal_init.lua      # Test initialization
+└── Makefile                  # Development tasks
+```
+
+## Architecture
+
+### Core Components
+
+1. **core.lua**: Low-level interface to codanna CLI
+   - Executes codanna commands via `vim.system()`
+   - Handles JSON parsing and error handling
+   - Implements LRU cache with 100-entry limit
+   - Provides both sync and async APIs
+
+2. **utils.lua**: Shared utility functions
+   - Result normalization across different API response formats
+   - Input validation (symbols, configuration)
+   - JSON parsing with error recovery
+   - Cache key generation
+
+3. **Picker Implementations** (telescope.lua, mini.lua, snacks.lua):
+   - Adapt core API to picker-specific interfaces
+   - Handle debouncing and live search
+   - Implement file preview and navigation
+   - Share common logic via utils module
+
+4. **init.lua**: Main entry point
+   - Picker auto-detection and fallback
+   - Configuration management
+   - Public API for all commands
+
+### Data Flow
+
+```
+User Command (plugin/codanna.lua)
+    ↓
+Main Module (init.lua) - picks appropriate picker
+    ↓
+Picker (telescope/mini/snacks.lua) - UI layer
+    ↓
+Core (core.lua) - executes codanna CLI
+    ↓
+Utils (utils.lua) - parse and normalize results
+    ↓
+Back to Picker - display results
+```
+
+## Adding New Features
+
+### Adding a New Command
+
+1. Add the core API function in `core.lua`:
+```lua
+function M.new_command(query, opts)
+  opts = opts or {}
+  local args = { "new_command", "query:" .. query }
+  return M.exec("mcp", args, opts)
+end
+
+function M.new_command_async(query, opts, callback)
+  -- async version
+end
+```
+
+2. Add picker functions in `telescope.lua`, `mini.lua`, `snacks.lua`
+
+3. Register user command in `plugin/codanna.lua`:
+```lua
+vim.api.nvim_create_user_command("CodannaNew", function(opts)
+  require("codanna").new_command({ default_text = opts.args })
+end, { nargs = "?", desc = "New command" })
+```
+
+4. Add tests in `test/spec/`
+
+### Testing Guidelines
+
+- Write unit tests for all utility functions
+- Test edge cases (nil values, empty arrays, malformed input)
+- Test error handling paths
+- Use descriptive test names
+- Group related tests with `describe` blocks
+
+### Code Style
+
+- Follow existing code patterns
+- Use JSDoc-style comments for functions
+- Keep functions small and focused
+- Prefer explicit over implicit
+- Use meaningful variable names
+
+## Common Issues
+
+### Tests Failing
+
+If tests fail, ensure:
+- Dependencies are installed: `make deps`
+- Neovim version is 0.10+
+- plenary.nvim is available
+
+### Picker Not Loading
+
+Check:
+- The picker plugin is installed
+- The picker module loads without errors: `:lua =require('telescope')` (or mini, snacks)
+- Check `:checkhealth` for dependency issues
+
+## Release Process
+
+1. Update version in README if needed
+2. Ensure all tests pass: `make test`
+3. Ensure code is formatted: `make format`
+4. Update CHANGELOG (if exists)
+5. Create git tag
+6. Push to GitHub
+
+## Getting Help
+
+- Check existing issues on GitHub
+- Read the main README.md
+- Look at test files for usage examples
+- Review code comments and documentation

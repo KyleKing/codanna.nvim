@@ -73,6 +73,7 @@ codanna index .
 
 ```bash
 make index-test-project   # Clone and index codanna repo for testing
+make test                 # Run automated tests
 make test-telescope       # Test with Telescope
 make test-mini            # Test with mini.pick
 make test-snacks          # Test with snacks.nvim
@@ -80,3 +81,120 @@ make test-snacks          # Test with snacks.nvim
 # Or test with your own project:
 make test-telescope PROJECT=/path/to/your/project
 ```
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development guide.
+
+## Troubleshooting
+
+### "codanna binary not found"
+
+**Cause**: The `codanna` CLI tool is not installed or not in PATH.
+
+**Solution**:
+1. Install codanna: https://github.com/bartolli/codanna
+2. Ensure it's in your PATH: `which codanna`
+3. Or specify full path in setup:
+   ```lua
+   require("codanna").setup({
+     codanna_path = "/full/path/to/codanna",
+   })
+   ```
+
+### "Index is empty" or "No results"
+
+**Cause**: Project hasn't been indexed, or index is out of date.
+
+**Solution**:
+```bash
+cd /path/to/your/project
+codanna init           # Initialize codanna in this project
+codanna index .        # Index all files in current directory
+```
+
+Re-run search after indexing.
+
+### "No picker available"
+
+**Cause**: None of the supported picker plugins are installed.
+
+**Solution**: Install at least one of:
+- snacks.nvim: `{ "folke/snacks.nvim" }`
+- telescope.nvim: `{ "nvim-telescope/telescope.nvim" }`
+- mini.pick: `{ "echasnovski/mini.nvim" }`
+
+### Search returns no results but index has data
+
+**Possible causes**:
+1. **Query too short**: Minimum 3 characters required for live search
+2. **Language not supported**: Check if your file types are supported (Rust, Python, JS, TS, Go, Java, C, C++, C#, Swift, Kotlin, PHP, GDScript)
+3. **Files excluded**: Check `.codannaignore` - might be excluding your files
+4. **Stale index**: Re-run `codanna index .` to update
+
+### Performance issues / Slow searches
+
+**Solutions**:
+1. Increase cache TTL to reduce repeated queries:
+   ```lua
+   require("codanna").setup({
+     cache_ttl_ms = 10000,  -- Cache results for 10 seconds
+   })
+   ```
+
+2. Adjust debounce for live search:
+   ```lua
+   require("codanna.telescope").config.debounce_ms = 300
+   ```
+
+3. Limit result count:
+   ```lua
+   require("codanna").semantic_search({ limit = 20 })
+   ```
+
+### "Failed to parse JSON response"
+
+**Cause**: Codanna output format changed or contains unexpected data.
+
+**Solution**:
+1. Check codanna version: `codanna --version`
+2. Try running codanna directly: `codanna mcp semantic_search_with_context "query:test" --json`
+3. Check for errors in `:messages`
+4. File an issue with the error details
+
+### Symbol under cursor not detected
+
+**Cause**: Cursor is not on a valid symbol.
+
+**Solution**:
+1. Ensure cursor is on a word (function name, class, etc.)
+2. Or provide symbol explicitly:
+   ```vim
+   :CodannaCallers my_function_name
+   ```
+
+### Commands not available
+
+**Cause**: Plugin not loaded or commands not registered.
+
+**Solution**:
+1. Check if plugin loaded: `:lua =require("codanna")`
+2. Verify commands exist: `:command Codanna`
+3. Try `:checkhealth` to diagnose issues
+4. Ensure plugin directory is in runtimepath
+
+### Cache issues / Stale results
+
+**Solution**: Clear the cache manually:
+```vim
+:lua require("codanna.core").clear_cache()
+:lua require("codanna.core").invalidate_index_cache()
+```
+
+Or restart Neovim.
+
+## Contributing
+
+Contributions welcome! See [DEVELOPMENT.md](DEVELOPMENT.md) for development setup and guidelines.
+
+## License
+
+MIT
