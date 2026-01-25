@@ -3,10 +3,9 @@
 NVIM ?= nvim
 TEST_PROJECT ?= .test-deps/codanna
 
-# Run automated tests with plenary
+# Run automated tests with mini.test
 test: deps
-	$(NVIM) --headless --noplugin -u test/minimal_init.lua \
-		-c "PlenaryBustedDirectory test/spec/ { minimal_init = 'test/minimal_init.lua' }"
+	@./scripts/run_tests.sh
 
 # Test with different picker backends
 # Usage: make test-telescope PROJECT=/path/to/project
@@ -35,7 +34,6 @@ index-test-project: test-project
 # Install test dependencies (picker plugins)
 deps:
 	@mkdir -p .test-deps
-	@test -d .test-deps/plenary.nvim || git clone --depth=1 https://github.com/nvim-lua/plenary.nvim .test-deps/plenary.nvim
 	@test -d .test-deps/telescope.nvim || git clone --depth=1 https://github.com/nvim-telescope/telescope.nvim .test-deps/telescope.nvim
 	@test -d .test-deps/mini.nvim || git clone --depth=1 https://github.com/echasnovski/mini.nvim .test-deps/mini.nvim
 	@test -d .test-deps/snacks.nvim || git clone --depth=1 https://github.com/folke/snacks.nvim .test-deps/snacks.nvim

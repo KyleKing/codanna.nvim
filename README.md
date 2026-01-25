@@ -1,5 +1,7 @@
 # codanna.nvim
 
+[![Tests](https://github.com/KyleKing/codanna.nvim/workflows/Tests/badge.svg)](https://github.com/KyleKing/codanna.nvim/actions)
+
 Neovim plugin for [codanna](https://github.com/bartolli/codanna) semantic code search. Supports Telescope, mini.pick, and snacks.nvim pickers.
 
 ## Requirements

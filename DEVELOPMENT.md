@@ -16,9 +16,8 @@ make deps
 ```
 
 This will install:
-- plenary.nvim (for testing)
+- mini.nvim (for testing with mini.test and mini.pick integration)
 - telescope.nvim (for testing Telescope integration)
-- mini.nvim (for testing mini.pick integration)
 - snacks.nvim (for testing Snacks integration)
 
 ## Running Tests
@@ -30,7 +29,12 @@ Run the test suite with:
 make test
 ```
 
-This runs all unit tests in `test/spec/` using plenary.nvim's busted test runner.
+This runs all unit tests in `test/` using mini.test from mini.nvim.
+
+You can also run the test script directly:
+```bash
+./scripts/run_tests.sh
+```
 
 ### Manual Integration Testing
 
@@ -58,6 +62,15 @@ make test-telescope PROJECT=/path/to/your/project
 
 ## Code Quality
 
+### CI/CD
+
+The project uses GitHub Actions for continuous integration:
+- Runs tests on Ubuntu and macOS
+- Tests against stable and nightly Neovim versions
+- Checks code formatting (on Ubuntu stable only)
+
+See `.github/workflows/test.yml` for configuration.
+
 ### Linting
 
 Check code style with stylua:
@@ -76,6 +89,9 @@ make format
 
 ```
 codanna.nvim/
+├── .github/
+│   └── workflows/
+│       └── test.yml          # CI configuration
 ├── lua/
 │   ├── codanna/
 │   │   ├── init.lua          # Main module, picker orchestration
@@ -89,15 +105,16 @@ codanna.nvim/
 │           └── codanna.lua   # Telescope extension registration
 ├── plugin/
 │   └── codanna.lua           # User commands registration
+├── scripts/
+│   ├── minimal_init.lua      # Test initialization for mini.test
+│   └── run_tests.sh          # Test runner script
 ├── test/
-│   ├── spec/                 # Unit tests
-│   │   ├── utils_spec.lua
-│   │   └── core_spec.lua
-│   ├── configs/              # Manual test configs
-│   │   ├── minimal_telescope.lua
-│   │   ├── minimal_mini.lua
-│   │   └── minimal_snacks.lua
-│   └── minimal_init.lua      # Test initialization
+│   ├── test_utils.lua        # Unit tests for utils module
+│   ├── test_core.lua         # Unit tests for core module
+│   └── configs/              # Manual test configs
+│       ├── minimal_telescope.lua
+│       ├── minimal_mini.lua
+│       └── minimal_snacks.lua
 └── Makefile                  # Development tasks
 ```
 
@@ -170,10 +187,11 @@ vim.api.nvim_create_user_command("CodannaNew", function(opts)
 end, { nargs = "?", desc = "New command" })
 ```
 
-4. Add tests in `test/spec/`
+4. Add tests in `test/test_*.lua` using mini.test format
 
 ### Testing Guidelines
 
+- Use mini.test for all unit tests
 - Write unit tests for all utility functions
 - Test edge cases (nil values, empty arrays, malformed input)
 - Test error handling paths
@@ -195,7 +213,7 @@ end, { nargs = "?", desc = "New command" })
 If tests fail, ensure:
 - Dependencies are installed: `make deps`
 - Neovim version is 0.10+
-- plenary.nvim is available
+- mini.nvim is available for mini.test
 
 ### Picker Not Loading
 

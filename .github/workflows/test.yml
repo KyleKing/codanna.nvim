@@ -1,0 +1,41 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        nvim-version: [stable, nightly]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ matrix.nvim-version }}
+      
+      - name: Install dependencies
+        run: make deps
+      
+      - name: Run tests
+        run: make test
+      
+      - name: Check formatting (Linux only)
+        if: matrix.os == 'ubuntu-latest' && matrix.nvim-version == 'stable'
+        run: |
+          if command -v stylua &> /dev/null; then
+            make lint
+          else
+            echo "stylua not installed, skipping lint check"
+          fi

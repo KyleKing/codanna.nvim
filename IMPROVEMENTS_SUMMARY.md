@@ -68,7 +68,7 @@ Changes in each:
 ### 5. Testing Infrastructure
 
 #### Test Files Created
-- **test/spec/utils_spec.lua** - 45+ unit tests for utilities
+- **test/test_utils.lua** - 45+ unit tests for utilities using mini.test
   - Tests for normalize_result (8 tests)
   - Tests for extract_results (4 tests)
   - Tests for validate_symbol (5 tests)
@@ -77,17 +77,25 @@ Changes in each:
   - Tests for parse_json_response (8 tests)
   - Tests for command_exists (2 tests)
 
-- **test/spec/core_spec.lua** - Unit tests for core module
+- **test/test_core.lua** - Unit tests for core module using mini.test
   - Cache functionality tests
   - Configuration tests
   - API existence tests
 
-- **test/minimal_init.lua** - Test environment setup
+- **scripts/minimal_init.lua** - Test environment setup for mini.test
+- **scripts/run_tests.sh** - Test runner script
 
 #### Test Infrastructure
-- Integrated plenary.nvim for testing
+- Integrated mini.test from mini.nvim for testing
 - Added `make test` command to Makefile
+- Added GitHub Actions CI workflow
 - Documented testing approach in DEVELOPMENT.md
+
+#### CI/CD
+- **`.github/workflows/test.yml`** - GitHub Actions workflow
+  - Runs tests on Ubuntu and macOS
+  - Tests against stable and nightly Neovim
+  - Checks code formatting
 
 ### 6. Documentation
 
