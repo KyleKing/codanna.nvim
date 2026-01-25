@@ -10,6 +10,7 @@ local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
 
 local codanna = require("codanna.core")
+local utils = require("codanna.utils")
 
 local M = {}
 
@@ -17,43 +18,11 @@ M.config = {
   debounce_ms = 150,
 }
 
-local function normalize_result(item)
-  if not item then
-    return nil
-  end
-
-  if item[1] and type(item[1]) == "table" then
-    item = item[1]
-  end
-
-  local filename = item.file_path or item.file or item.path
-  local lnum = 1
-  local col = 0
-
-  if item.range then
-    lnum = (item.range.start_line or 0) + 1
-    col = item.range.start_column or 0
-  elseif item.line ~= nil then
-    lnum = item.line + 1
-    col = item.column or 0
-  elseif item.lnum then
-    lnum = item.lnum
-    col = item.col or 0
-  end
-
-  return {
-    name = item.name or item.symbol or item.title or "unknown",
-    kind = item.kind,
-    filename = filename,
-    lnum = lnum,
-    col = col,
-    signature = item.signature,
-    score = item.score,
-  }
-end
-
+--- Convert normalized result to Telescope entry
+--- @param item table Result item from codanna API
+--- @return table|nil Telescope entry or nil
 local function make_entry(item)
-  local norm = normalize_result(item)
+  local norm = utils.normalize_result(item)
   if not norm then
     return nil
   end
@@ -62,20 +31,22 @@ local function make_entry(item)
   if norm.kind then
     display = string.format("[%s] %s", norm.kind, norm.name)
   end
-  if norm.filename then
-    display = string.format("%s:%d - %s", vim.fn.fnamemodify(norm.filename, ":~:."), norm.lnum, display)
+  if norm.file then
+    display = string.format("%s:%d - %s", vim.fn.fnamemodify(norm.file, ":~:."), norm.lnum, display)
   end
 
   return {
     value = item,
     display = display,
     ordinal = norm.name,
-    filename = norm.filename,
+    filename = norm.file,
     lnum = norm.lnum,
     col = norm.col,
   }
 end
 
+--- Navigate to selected entry
+--- @param prompt_bufnr number Telescope prompt buffer number
 local function goto_selection(prompt_bufnr)
   actions.close(prompt_bufnr)
   local selection = action_state.get_selected_entry()
@@ -83,19 +54,6 @@ local function goto_selection(prompt_bufnr)
     vim.cmd("edit " .. vim.fn.fnameescape(selection.filename))
     vim.api.nvim_win_set_cursor(0, { selection.lnum, selection.col })
   end
-end
-
-local function extract_results(data)
-  if not data then
-    return {}
-  end
-  if vim.islist(data) then
-    return data
-  end
-  if data.results then
-    return data.results
-  end
-  return {}
 end
 
 local function create_live_picker(title, search_fn, opts)
@@ -136,7 +94,7 @@ local function create_live_picker(title, search_fn, opts)
         vim.notify("Codanna: " .. err, vim.log.levels.WARN)
         results = {}
       else
-        results = extract_results(data)
+        results = utils.extract_results(data)
         if #results == 0 and not notified_empty then
           notified_empty = true
           codanna.notify_empty_results(query)
@@ -234,9 +192,19 @@ function M.search_symbols(opts)
   )
 end
 
+--- Find callers of a symbol
+--- @param opts table Options: { symbol: string|nil }
 function M.find_callers(opts)
   opts = opts or {}
   local symbol = opts.symbol or vim.fn.expand("<cword>")
+
+  -- Validate symbol
+  local valid_symbol, err = utils.validate_symbol(symbol)
+  if err then
+    vim.notify("Codanna: " .. err, vim.log.levels.WARN)
+    return
+  end
+  symbol = valid_symbol
 
   codanna.find_callers_async(symbol, {}, function(data, err)
     if err then
@@ -244,7 +212,7 @@ function M.find_callers(opts)
       return
     end
 
-    local results = extract_results(data)
+    local results = utils.extract_results(data)
 
     if #results == 0 then
       codanna.notify_empty_results(symbol)
@@ -268,9 +236,19 @@ function M.find_callers(opts)
   end)
 end
 
+--- Get outgoing calls from a symbol
+--- @param opts table Options: { symbol: string|nil }
 function M.get_calls(opts)
   opts = opts or {}
   local symbol = opts.symbol or vim.fn.expand("<cword>")
+
+  -- Validate symbol
+  local valid_symbol, err = utils.validate_symbol(symbol)
+  if err then
+    vim.notify("Codanna: " .. err, vim.log.levels.WARN)
+    return
+  end
+  symbol = valid_symbol
 
   codanna.get_calls_async(symbol, {}, function(data, err)
     if err then
@@ -278,7 +256,7 @@ function M.get_calls(opts)
       return
     end
 
-    local results = extract_results(data)
+    local results = utils.extract_results(data)
 
     if #results == 0 then
       codanna.notify_empty_results(symbol)
@@ -302,9 +280,19 @@ function M.get_calls(opts)
   end)
 end
 
+--- Analyze impact of changes to a symbol
+--- @param opts table Options: { symbol: string|nil }
 function M.analyze_impact(opts)
   opts = opts or {}
   local symbol = opts.symbol or vim.fn.expand("<cword>")
+
+  -- Validate symbol
+  local valid_symbol, err = utils.validate_symbol(symbol)
+  if err then
+    vim.notify("Codanna: " .. err, vim.log.levels.WARN)
+    return
+  end
+  symbol = valid_symbol
 
   codanna.analyze_impact_async(symbol, {}, function(data, err)
     if err then
@@ -312,7 +300,7 @@ function M.analyze_impact(opts)
       return
     end
 
-    local results = extract_results(data)
+    local results = utils.extract_results(data)
 
     if #results == 0 then
       codanna.notify_empty_results(symbol)
