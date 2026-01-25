@@ -7,8 +7,8 @@ on:
     branches: [main, master]
 
 jobs:
-  test:
-    name: Run tests
+  unit-tests:
+    name: Unit tests
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -25,10 +25,18 @@ jobs:
           neovim: true
           version: ${{ matrix.nvim-version }}
       
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: .test-deps
+          key: ${{ runner.os }}-nvim-deps-${{ hashFiles('Makefile') }}
+          restore-keys: |
+            ${{ runner.os }}-nvim-deps-
+      
       - name: Install dependencies
         run: make deps
       
-      - name: Run tests
+      - name: Run unit tests
         run: make test
       
       - name: Check formatting (Linux only)
@@ -39,3 +47,74 @@ jobs:
           else
             echo "stylua not installed, skipping lint check"
           fi
+
+  integration-tests:
+    name: Integration tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        nvim-version: [stable]
+    
+    env:
+      CODANNA_VERSION: "0.1.12"
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ matrix.nvim-version }}
+      
+      - name: Cache Rust/Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-codanna-${{ env.CODANNA_VERSION }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-codanna-
+      
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: .test-deps
+          key: ${{ runner.os }}-nvim-deps-${{ hashFiles('Makefile') }}
+          restore-keys: |
+            ${{ runner.os }}-nvim-deps-
+      
+      - name: Cache test repositories
+        uses: actions/cache@v4
+        with:
+          path: test-repos
+          key: ${{ runner.os }}-test-repos-v1
+          restore-keys: |
+            ${{ runner.os }}-test-repos-
+      
+      - name: Install Rust (for building codanna)
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install codanna CLI
+        run: |
+          if ! command -v codanna &> /dev/null || [[ "$(codanna --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')" != "$CODANNA_VERSION" ]]; then
+            echo "Installing codanna $CODANNA_VERSION..."
+            cargo install codanna --version $CODANNA_VERSION --locked
+          else
+            echo "codanna $CODANNA_VERSION already installed"
+          fi
+          codanna --version
+      
+      - name: Setup test repositories
+        run: make setup-test-repos
+      
+      - name: Install dependencies
+        run: make deps
+      
+      - name: Run integration tests
+        run: make test-integration

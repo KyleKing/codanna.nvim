@@ -4,3 +4,4 @@
 .fastembed_cache
 .luarc.json
 .test-deps/
+test-repos/

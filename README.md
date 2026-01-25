@@ -74,8 +74,9 @@ codanna index .
 ## Development
 
 ```bash
-make index-test-project   # Clone and index codanna repo for testing
-make test                 # Run automated tests
+make test                 # Run unit tests
+make test-integration     # Run integration tests (requires codanna CLI)
+make setup-test-repos     # Setup test repositories for integration tests
 make test-telescope       # Test with Telescope
 make test-mini            # Test with mini.pick
 make test-snacks          # Test with snacks.nvim

@@ -24,7 +24,7 @@ This will install:
 
 ### Automated Unit Tests
 
-Run the test suite with:
+Run the unit test suite with:
 ```bash
 make test
 ```
@@ -34,6 +34,31 @@ This runs all unit tests in `test/` using mini.test from mini.nvim.
 You can also run the test script directly:
 ```bash
 ./scripts/run_tests.sh
+```
+
+### Integration Tests
+
+Integration tests verify the plugin works with the real codanna CLI tool against indexed repositories.
+
+Setup test repositories (Flask for Python, Express for JavaScript):
+```bash
+make setup-test-repos
+```
+
+Run integration tests:
+```bash
+make test-integration
+```
+
+This will:
+1. Clone Flask and Express repositories at pinned commits
+2. Initialize and index them with codanna
+3. Run integration tests against both repositories
+4. Verify semantic search, symbol search, and other features work end-to-end
+
+Clean test repositories:
+```bash
+make clean-test-repos
 ```
 
 ### Manual Integration Testing
@@ -65,8 +90,11 @@ make test-telescope PROJECT=/path/to/your/project
 ### CI/CD
 
 The project uses GitHub Actions for continuous integration:
-- Runs tests on Ubuntu and macOS
-- Tests against stable and nightly Neovim versions
+- **Unit Tests Job**: Runs on Ubuntu and macOS with stable and nightly Neovim
+- **Integration Tests Job**: Runs on Ubuntu and macOS with stable Neovim
+  - Installs specific codanna CLI version (v0.1.12)
+  - Caches Rust/Cargo, dependencies, and test repositories
+  - Tests against real indexed Flask (Python) and Express (JavaScript) repositories
 - Checks code formatting (on Ubuntu stable only)
 
 See `.github/workflows/test.yml` for configuration.
