@@ -44,7 +44,7 @@ echo ""
 echo -e "${YELLOW}Running tests against Flask repository...${NC}"
 cd "$PROJECT_DIR/$TEST_REPOS_DIR/flask"
 if $NVIM --headless --noplugin -u "$PROJECT_DIR/scripts/minimal_init.lua" \
-  -c "lua MiniTest.run_file('$PROJECT_DIR/test/test_integration.lua')" 2>&1; then
+  -c "lua MiniTest.run_file('test/test_integration.lua')" 2>&1; then
   echo -e "${GREEN}✓ Flask integration tests passed${NC}"
   FLASK_RESULT=0
 else
@@ -57,7 +57,7 @@ echo ""
 echo -e "${YELLOW}Running tests against Express repository...${NC}"
 cd "$PROJECT_DIR/$TEST_REPOS_DIR/express"
 if $NVIM --headless --noplugin -u "$PROJECT_DIR/scripts/minimal_init.lua" \
-  -c "lua MiniTest.run_file('$PROJECT_DIR/test/test_integration.lua')" 2>&1; then
+  -c "lua MiniTest.run_file('test/test_integration.lua')" 2>&1; then
   echo -e "${GREEN}✓ Express integration tests passed${NC}"
   EXPRESS_RESULT=0
 else

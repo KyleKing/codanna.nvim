@@ -6,11 +6,18 @@ on:
   pull_request:
     branches: [main, master]
 
+# Cancel in-progress runs when a new workflow with the same group name is triggered
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   unit-tests:
     name: Unit tests
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
         nvim-version: [stable, nightly]
@@ -51,7 +58,9 @@ jobs:
   integration-tests:
     name: Integration tests
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
         nvim-version: [stable]
@@ -132,7 +141,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: test-repos
-          key: ${{ runner.os }}-test-repos-v1
+          key: ${{ runner.os }}-test-repos-v2
           restore-keys: |
             ${{ runner.os }}-test-repos-
       

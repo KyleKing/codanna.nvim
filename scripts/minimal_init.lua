@@ -1,11 +1,17 @@
 --- Minimal init for running tests with mini.test
 --- Sets up the environment to load the plugin and mini.test
 
--- Add current directory to runtime path
-vim.opt.rtp:append(vim.fn.getcwd())
+-- Determine the project root directory
+-- This script is in <project>/scripts/minimal_init.lua
+local script_path = debug.getinfo(1, "S").source:sub(2)
+local script_dir = vim.fn.fnamemodify(script_path, ":h")
+local project_dir = vim.fn.fnamemodify(script_dir, ":h")
+
+-- Add project directory to runtime path
+vim.opt.rtp:append(project_dir)
 
 -- Add mini.nvim to runtime path
-local mini_path = vim.fn.getcwd() .. "/.test-deps/mini.nvim"
+local mini_path = project_dir .. "/.test-deps/mini.nvim"
 if vim.fn.isdirectory(mini_path) == 1 then
   vim.opt.rtp:append(mini_path)
 end
