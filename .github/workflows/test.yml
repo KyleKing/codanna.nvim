@@ -1,0 +1,270 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+# Cancel in-progress runs when a new workflow with the same group name is triggered
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        nvim-version: [stable, nightly]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ matrix.nvim-version }}
+      
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: .test-deps
+          key: ${{ runner.os }}-nvim-deps-${{ hashFiles('Makefile') }}
+          restore-keys: |
+            ${{ runner.os }}-nvim-deps-
+      
+      - name: Install dependencies
+        run: make deps
+      
+      - name: Verify dependencies
+        run: |
+          echo "=== Verifying test dependencies ==="
+          echo "Checking .test-deps directory..."
+          ls -la .test-deps/ || echo ".test-deps directory not found"
+          
+          if [ -d ".test-deps/mini.nvim" ]; then
+            echo "✓ mini.nvim found"
+            ls -la .test-deps/mini.nvim/lua/mini/ | head -10
+          else
+            echo "✗ mini.nvim NOT found"
+            exit 1
+          fi
+          
+          if [ -d ".test-deps/telescope.nvim" ]; then
+            echo "✓ telescope.nvim found"
+          else
+            echo "✗ telescope.nvim NOT found"
+          fi
+          
+          if [ -d ".test-deps/snacks.nvim" ]; then
+            echo "✓ snacks.nvim found"
+          else
+            echo "✗ snacks.nvim NOT found"
+          fi
+      
+      - name: Run unit tests
+        run: make test
+      
+      - name: Check formatting (Linux only)
+        if: matrix.os == 'ubuntu-latest' && matrix.nvim-version == 'stable'
+        run: |
+          if command -v stylua &> /dev/null; then
+            make lint
+          else
+            echo "stylua not installed, skipping lint check"
+          fi
+
+  integration-tests:
+    name: Integration tests
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        nvim-version: [stable]
+    
+    env:
+      CODANNA_VERSION: "0.9.13"
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ matrix.nvim-version }}
+      
+      - name: Cache codanna binary
+        id: cache-codanna
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin/codanna
+          key: ${{ runner.os }}-${{ runner.arch }}-codanna-${{ env.CODANNA_VERSION }}
+      
+      - name: Install codanna CLI from binary
+        if: steps.cache-codanna.outputs.cache-hit != 'true'
+        run: |
+          VERSION="${CODANNA_VERSION}"
+          
+          # Detect platform and architecture
+          OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          ARCH="$(uname -m)"
+          
+          echo "=== System Information ==="
+          echo "OS: $OS"
+          echo "Architecture: $ARCH"
+          echo "uname -a: $(uname -a)"
+          
+          if [ "$OS" = "linux" ]; then
+            PLATFORM="linux-x64"
+          elif [ "$OS" = "darwin" ]; then
+            if [ "$ARCH" = "arm64" ]; then
+              PLATFORM="macos-arm64"
+            else
+              PLATFORM="macos-x64"
+            fi
+          else
+            echo "Unsupported OS: $OS"
+            exit 1
+          fi
+          
+          echo "Selected platform: $PLATFORM"
+          
+          # Download and extract binary
+          TARBALL="codanna-${VERSION}-${PLATFORM}.tar.xz"
+          URL="https://github.com/bartolli/codanna/releases/download/v${VERSION}/${TARBALL}"
+          
+          echo "=== Downloading codanna ==="
+          echo "URL: $URL"
+          echo "Downloading to: /tmp/${TARBALL}"
+          
+          if ! curl -L -f -o "/tmp/${TARBALL}" "$URL"; then
+            echo "ERROR: Failed to download codanna from $URL"
+            echo "Checking if the release exists..."
+            curl -I "$URL" || true
+            exit 1
+          fi
+          
+          echo "Download successful"
+          ls -lh "/tmp/${TARBALL}"
+          
+          # Extract binary
+          echo "=== Extracting binary ==="
+          mkdir -p ~/.local/bin
+          
+          if ! tar -xf "/tmp/${TARBALL}" -C ~/.local/bin; then
+            echo "ERROR: Failed to extract tarball"
+            echo "Tarball contents:"
+            tar -tf "/tmp/${TARBALL}" || true
+            exit 1
+          fi
+          
+          echo "Extraction successful"
+          echo "Contents of ~/.local/bin:"
+          ls -la ~/.local/bin/
+          
+          chmod +x ~/.local/bin/codanna
+          
+          echo "=== Installation complete ==="
+          echo "Codanna binary location: ~/.local/bin/codanna"
+          file ~/.local/bin/codanna || true
+      
+      - name: Add codanna to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Verify codanna installation
+        run: |
+          echo "=== Verifying codanna installation ==="
+          echo "PATH: $PATH"
+          echo "Checking if codanna is in PATH..."
+          which codanna || echo "codanna not found in PATH"
+          
+          if [ -f "$HOME/.local/bin/codanna" ]; then
+            echo "Binary exists at: $HOME/.local/bin/codanna"
+            ls -lh "$HOME/.local/bin/codanna"
+            file "$HOME/.local/bin/codanna" || true
+          else
+            echo "ERROR: Binary not found at $HOME/.local/bin/codanna"
+            exit 1
+          fi
+          
+          echo "Running: codanna --version"
+          codanna --version
+          echo "=== Codanna installed successfully ==="
+      
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: .test-deps
+          key: ${{ runner.os }}-nvim-deps-${{ hashFiles('Makefile') }}
+          restore-keys: |
+            ${{ runner.os }}-nvim-deps-
+      
+      - name: Cache test repositories
+        uses: actions/cache@v4
+        with:
+          path: test-repos
+          key: ${{ runner.os }}-test-repos-v2
+          restore-keys: |
+            ${{ runner.os }}-test-repos-
+      
+      - name: Setup test repositories
+        run: |
+          echo "=== Setting up test repositories ==="
+          make setup-test-repos
+          
+          echo "=== Verifying test repositories ==="
+          if [ -d "test-repos/flask" ]; then
+            echo "✓ Flask repository found"
+            ls -la test-repos/flask/ | head -5
+          else
+            echo "✗ Flask repository NOT found"
+            exit 1
+          fi
+          
+          if [ -d "test-repos/express" ]; then
+            echo "✓ Express repository found"
+            ls -la test-repos/express/ | head -5
+          else
+            echo "✗ Express repository NOT found"
+            exit 1
+          fi
+          
+          echo "=== Checking codanna indexes ==="
+          if [ -d "test-repos/flask/.codanna" ]; then
+            echo "✓ Flask codanna index exists"
+          else
+            echo "✗ Flask codanna index NOT found"
+          fi
+          
+          if [ -d "test-repos/express/.codanna" ]; then
+            echo "✓ Express codanna index exists"
+          else
+            echo "✗ Express codanna index NOT found"
+          fi
+      
+      - name: Install dependencies
+        run: make deps
+      
+      - name: Verify dependencies
+        run: |
+          echo "=== Verifying test dependencies ==="
+          if [ -d ".test-deps/mini.nvim" ]; then
+            echo "✓ mini.nvim found"
+          else
+            echo "✗ mini.nvim NOT found"
+            exit 1
+          fi
+      
+      - name: Run integration tests
+        run: make test-integration
