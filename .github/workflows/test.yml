@@ -32,16 +32,19 @@ jobs:
           neovim: true
           version: ${{ matrix.nvim-version }}
       
+      - name: Install mise
+        uses: jdx/mise-action@v2
+      
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
           path: .test-deps
-          key: ${{ runner.os }}-nvim-deps-${{ hashFiles('Makefile') }}
+          key: ${{ runner.os }}-nvim-deps-${{ hashFiles('mise.toml') }}
           restore-keys: |
             ${{ runner.os }}-nvim-deps-
       
       - name: Install dependencies
-        run: make deps
+        run: mise run deps
       
       - name: Verify dependencies
         run: |
@@ -70,16 +73,11 @@ jobs:
           fi
       
       - name: Run unit tests
-        run: make test
+        run: mise run test
       
       - name: Check formatting (Linux only)
         if: matrix.os == 'ubuntu-latest' && matrix.nvim-version == 'stable'
-        run: |
-          if command -v stylua &> /dev/null; then
-            make lint
-          else
-            echo "stylua not installed, skipping lint check"
-          fi
+        run: mise run lint
 
   integration-tests:
     name: Integration tests
@@ -103,6 +101,9 @@ jobs:
         with:
           neovim: true
           version: ${{ matrix.nvim-version }}
+      
+      - name: Install mise
+        uses: jdx/mise-action@v2
       
       - name: Cache codanna binary
         id: cache-codanna
@@ -206,7 +207,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .test-deps
-          key: ${{ runner.os }}-nvim-deps-${{ hashFiles('Makefile') }}
+          key: ${{ runner.os }}-nvim-deps-${{ hashFiles('mise.toml') }}
           restore-keys: |
             ${{ runner.os }}-nvim-deps-
       
@@ -221,7 +222,7 @@ jobs:
       - name: Setup test repositories
         run: |
           echo "=== Setting up test repositories ==="
-          make setup-test-repos
+          mise run setup-test-repos
           
           echo "=== Verifying test repositories ==="
           if [ -d "test-repos/flask" ]; then
@@ -254,7 +255,7 @@ jobs:
           fi
       
       - name: Install dependencies
-        run: make deps
+        run: mise run deps
       
       - name: Verify dependencies
         run: |
@@ -267,4 +268,4 @@ jobs:
           fi
       
       - name: Run integration tests
-        run: make test-integration
+        run: mise run test-integration

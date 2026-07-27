@@ -74,15 +74,15 @@ codanna index .
 ## Development
 
 ```bash
-make test                 # Run unit tests
-make test-integration     # Run integration tests (requires codanna CLI)
-make setup-test-repos     # Setup test repositories for integration tests
-make test-telescope       # Test with Telescope
-make test-mini            # Test with mini.pick
-make test-snacks          # Test with snacks.nvim
+mise run test                 # Run unit tests
+mise run test-integration     # Run integration tests (requires codanna CLI)
+mise run setup-test-repos     # Setup test repositories for integration tests
+mise run test-telescope       # Test with Telescope
+mise run test-mini            # Test with mini.pick
+mise run test-snacks          # Test with snacks.nvim
 
 # Or test with your own project:
-make test-telescope PROJECT=/path/to/your/project
+mise run test-telescope PROJECT=/path/to/your/project
 ```
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development guide.

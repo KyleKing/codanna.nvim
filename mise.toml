@@ -1,0 +1,123 @@
+[tools]
+stylua = "2.5.2"
+
+[env]
+NVIM = "nvim"
+TEST_PROJECT = ".test-deps/codanna"
+TEST_REPOS_DIR = "test-repos"
+# Pinned tags for test repositories, for reproducible indexes
+FLASK_REF = "3.0.0"
+EXPRESS_REF = "4.18.2"
+
+[tasks.test]
+description = "Run automated unit tests with mini.test"
+depends = ["deps"]
+run = "./scripts/run_tests.sh"
+
+[tasks.test-integration]
+description = "Run integration tests against real indexed repositories"
+depends = ["deps", "setup-test-repos"]
+run = "./scripts/run_integration_tests.sh"
+
+[tasks.setup-test-repos]
+description = "Clone and index the pinned test repositories"
+run = """
+set -eu
+echo "Setting up test repositories..."
+mkdir -p "$TEST_REPOS_DIR"
+
+if [ ! -d "$TEST_REPOS_DIR/flask" ]; then
+  echo "Cloning Flask $FLASK_REF..."
+  git clone --branch "$FLASK_REF" --depth=1 https://github.com/pallets/flask "$TEST_REPOS_DIR/flask"
+fi
+
+if [ ! -d "$TEST_REPOS_DIR/express" ]; then
+  echo "Cloning Express $EXPRESS_REF..."
+  git clone --branch "$EXPRESS_REF" --depth=1 https://github.com/expressjs/express "$TEST_REPOS_DIR/express"
+fi
+
+echo "Initializing codanna indexes..."
+(cd "$TEST_REPOS_DIR/flask" && { codanna init || true; } && codanna index .)
+(cd "$TEST_REPOS_DIR/express" && { codanna init || true; } && codanna index .)
+echo "Test repositories ready in $TEST_REPOS_DIR/"
+"""
+
+[tasks.clean-test-repos]
+description = "Remove the cloned test repositories"
+run = 'rm -rf "$TEST_REPOS_DIR"'
+
+[tasks.test-telescope]
+description = "Test with telescope picker backend"
+usage = '''
+arg "[PROJECT]" help="Path to project directory" default=".test-deps/codanna"
+'''
+run = """
+cd ${usage_PROJECT} && $NVIM --clean -u $ROOT/test/configs/minimal_telescope.lua .
+"""
+
+[tasks.test-mini]
+description = "Test with mini picker backend"
+usage = '''
+arg "[PROJECT]" help="Path to project directory" default=".test-deps/codanna"
+'''
+run = """
+cd ${usage_PROJECT} && $NVIM --clean -u $ROOT/test/configs/minimal_mini.lua .
+"""
+
+[tasks.test-snacks]
+description = "Test with snacks picker backend"
+usage = '''
+arg "[PROJECT]" help="Path to project directory" default=".test-deps/codanna"
+'''
+run = """
+cd ${usage_PROJECT} && $NVIM --clean -u $ROOT/test/configs/minimal_snacks.lua .
+"""
+
+[tasks.test-project]
+description = "Clone codanna repo for testing (Rust, a supported language)"
+run = """
+set -eu
+mkdir -p .test-deps
+test -d "$TEST_PROJECT" || git clone --depth=1 https://github.com/bartolli/codanna "$TEST_PROJECT"
+echo "Test project cloned to $TEST_PROJECT"
+echo "Run 'mise run index-test-project' to index it with codanna"
+"""
+
+[tasks.index-test-project]
+description = "Index the test project with codanna"
+depends = ["test-project"]
+run = """
+set -eu
+echo "Indexing $TEST_PROJECT..."
+(cd "$TEST_PROJECT" && codanna index .)
+echo "Done! Now run 'mise run test-telescope', 'mise run test-mini', or 'mise run test-snacks'"
+"""
+
+[tasks.deps]
+description = "Install test dependencies (picker plugins)"
+run = """
+set -eu
+mkdir -p .test-deps
+test -d .test-deps/plenary.nvim || git clone --depth=1 https://github.com/nvim-lua/plenary.nvim .test-deps/plenary.nvim
+test -d .test-deps/telescope.nvim || git clone --depth=1 https://github.com/nvim-telescope/telescope.nvim .test-deps/telescope.nvim
+test -d .test-deps/mini.nvim || git clone --depth=1 https://github.com/echasnovski/mini.nvim .test-deps/mini.nvim
+test -d .test-deps/snacks.nvim || git clone --depth=1 https://github.com/folke/snacks.nvim .test-deps/snacks.nvim
+echo "Dependencies installed in .test-deps/"
+"""
+
+[tasks.clean]
+description = "Clean test dependencies and test repositories"
+run = 'rm -rf .test-deps "$TEST_REPOS_DIR"'
+
+[tasks.lint]
+description = "Lint with stylua"
+run = "stylua --check lua/ test/ scripts/"
+
+[tasks.format]
+description = "Format with stylua"
+run = "stylua lua/ test/ scripts/"
+
+[tasks.ci]
+description = "Run the gates CI runs"
+depends = ["lint", "test"]
+run = "echo 'ci ok'"

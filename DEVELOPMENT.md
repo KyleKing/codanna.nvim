@@ -12,7 +12,7 @@ cd codanna.nvim
 
 2. Install development dependencies:
 ```bash
-make deps
+mise run deps
 ```
 
 This will install:
@@ -26,7 +26,7 @@ This will install:
 
 Run the unit test suite with:
 ```bash
-make test
+mise run test
 ```
 
 This runs all unit tests in `test/` using mini.test from mini.nvim.
@@ -42,12 +42,12 @@ Integration tests verify the plugin works with the real codanna CLI tool against
 
 Setup test repositories (Flask for Python, Express for JavaScript):
 ```bash
-make setup-test-repos
+mise run setup-test-repos
 ```
 
 Run integration tests:
 ```bash
-make test-integration
+mise run test-integration
 ```
 
 This will:
@@ -58,7 +58,7 @@ This will:
 
 Clean test repositories:
 ```bash
-make clean-test-repos
+mise run clean-test-repos
 ```
 
 ### Manual Integration Testing
@@ -67,22 +67,22 @@ Test with different picker backends using a real project:
 
 ```bash
 # Clone and index a test project
-make test-project
-make index-test-project
+mise run test-project
+mise run index-test-project
 
 # Test with Telescope
-make test-telescope
+mise run test-telescope
 
 # Test with mini.pick
-make test-mini
+mise run test-mini
 
 # Test with snacks.nvim
-make test-snacks
+mise run test-snacks
 ```
 
 Or test with your own project:
 ```bash
-make test-telescope PROJECT=/path/to/your/project
+mise run test-telescope PROJECT=/path/to/your/project
 ```
 
 ## Code Quality
@@ -103,14 +103,14 @@ See `.github/workflows/test.yml` for configuration.
 
 Check code style with stylua:
 ```bash
-make lint
+mise run lint
 ```
 
 ### Formatting
 
 Format code with stylua:
 ```bash
-make format
+mise run format
 ```
 
 ## Project Structure
@@ -143,7 +143,7 @@ codanna.nvim/
 │       ├── minimal_telescope.lua
 │       ├── minimal_mini.lua
 │       └── minimal_snacks.lua
-└── Makefile                  # Development tasks
+└── mise.toml                 # Development tasks
 ```
 
 ## Architecture
@@ -239,7 +239,7 @@ end, { nargs = "?", desc = "New command" })
 ### Tests Failing
 
 If tests fail, ensure:
-- Dependencies are installed: `make deps`
+- Dependencies are installed: `mise run deps`
 - Neovim version is 0.10+
 - mini.nvim is available for mini.test
 
@@ -253,8 +253,8 @@ Check:
 ## Release Process
 
 1. Update version in README if needed
-2. Ensure all tests pass: `make test`
-3. Ensure code is formatted: `make format`
+2. Ensure all tests pass: `mise run test`
+3. Ensure code is formatted: `mise run format`
 4. Update CHANGELOG (if exists)
 5. Create git tag
 6. Push to GitHub
