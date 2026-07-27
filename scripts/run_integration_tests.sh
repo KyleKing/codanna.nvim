@@ -40,11 +40,21 @@ fi
 echo -e "${BLUE}Test repositories found in $TEST_REPOS_DIR/${NC}"
 echo ""
 
+# The tests run with the target repository as the working directory, so the test
+# file must be addressed absolutely. A missing path leaves headless Neovim alive
+# with no way to exit, so the run is wrapped to force a failing exit instead.
+TEST_FILE="$PROJECT_DIR/test/test_integration.lua"
+if [ ! -f "$TEST_FILE" ]; then
+  echo -e "${RED}✗ Integration test file not found at $TEST_FILE${NC}"
+  exit 1
+fi
+RUN_TESTS="lua local ok, err = pcall(MiniTest.run_file, '$TEST_FILE') if not ok then io.stderr:write(tostring(err) .. '\\n') vim.cmd('cquit 1') end"
+
 # Run integration tests for Flask (Python)
 echo -e "${YELLOW}Running tests against Flask repository...${NC}"
 cd "$PROJECT_DIR/$TEST_REPOS_DIR/flask"
 if $NVIM --headless --noplugin -u "$PROJECT_DIR/scripts/minimal_init.lua" \
-  -c "lua MiniTest.run_file('test/test_integration.lua')" 2>&1; then
+  -c "$RUN_TESTS" 2>&1; then
   echo -e "${GREEN}✓ Flask integration tests passed${NC}"
   FLASK_RESULT=0
 else
@@ -57,7 +67,7 @@ echo ""
 echo -e "${YELLOW}Running tests against Express repository...${NC}"
 cd "$PROJECT_DIR/$TEST_REPOS_DIR/express"
 if $NVIM --headless --noplugin -u "$PROJECT_DIR/scripts/minimal_init.lua" \
-  -c "lua MiniTest.run_file('test/test_integration.lua')" 2>&1; then
+  -c "$RUN_TESTS" 2>&1; then
   echo -e "${GREEN}✓ Express integration tests passed${NC}"
   EXPRESS_RESULT=0
 else
