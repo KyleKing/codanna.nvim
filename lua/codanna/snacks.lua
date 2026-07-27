@@ -62,7 +62,9 @@ local function create_async_finder(search_fn, min_chars)
       end
       local results = utils.extract_results(data)
       local items = vim.tbl_map(make_item, results)
-      items = vim.tbl_filter(function(i) return i ~= nil end, items)
+      items = vim.tbl_filter(function(i)
+        return i ~= nil
+      end, items)
 
       if #items == 0 and not notified_empty then
         notified_empty = true
@@ -93,7 +95,9 @@ local function create_static_async_finder(fetch_fn)
       end
       local results = utils.extract_results(data)
       local items = vim.tbl_map(make_item, results)
-      items = vim.tbl_filter(function(i) return i ~= nil end, items)
+      items = vim.tbl_filter(function(i)
+        return i ~= nil
+      end, items)
 
       if #items == 0 then
         vim.schedule(function()

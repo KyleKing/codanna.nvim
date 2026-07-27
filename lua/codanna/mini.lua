@@ -100,7 +100,9 @@ local function create_live_source(name, search_fn, opts)
       else
         local results = utils.extract_results(data)
         items = vim.tbl_map(make_item, results)
-        items = vim.tbl_filter(function(i) return i ~= nil end, items)
+        items = vim.tbl_filter(function(i)
+          return i ~= nil
+        end, items)
 
         if #items == 0 and not notified_empty then
           notified_empty = true
@@ -132,9 +134,13 @@ local function create_live_source(name, search_fn, opts)
         end
 
         if #query_str >= 3 then
-          debounce_timer:start(M.config.debounce_ms, 0, vim.schedule_wrap(function()
-            do_search(query_str)
-          end))
+          debounce_timer:start(
+            M.config.debounce_ms,
+            0,
+            vim.schedule_wrap(function()
+              do_search(query_str)
+            end)
+          )
         else
           items = {}
           notified_empty = false
@@ -167,26 +173,18 @@ end
 function M.semantic_search(opts)
   opts = opts or {}
   MiniPick.start({
-    source = create_live_source(
-      "Codanna: Semantic Search",
-      function(query, o, callback)
-        codanna.semantic_search_async(query, { limit = o.limit or 50 }, callback)
-      end,
-      opts
-    ),
+    source = create_live_source("Codanna: Semantic Search", function(query, o, callback)
+      codanna.semantic_search_async(query, { limit = o.limit or 50 }, callback)
+    end, opts),
   })
 end
 
 function M.search_symbols(opts)
   opts = opts or {}
   MiniPick.start({
-    source = create_live_source(
-      "Codanna: Search Symbols",
-      function(query, o, callback)
-        codanna.search_symbols_async(query, { limit = o.limit or 50, kind = o.kind }, callback)
-      end,
-      opts
-    ),
+    source = create_live_source("Codanna: Search Symbols", function(query, o, callback)
+      codanna.search_symbols_async(query, { limit = o.limit or 50, kind = o.kind }, callback)
+    end, opts),
   })
 end
 
@@ -212,7 +210,9 @@ function M.find_callers(opts)
 
     local results = utils.extract_results(data)
     local items = vim.tbl_map(make_item, results)
-    items = vim.tbl_filter(function(i) return i ~= nil end, items)
+    items = vim.tbl_filter(function(i)
+      return i ~= nil
+    end, items)
 
     if #items == 0 then
       codanna.notify_empty_results(symbol)
@@ -251,7 +251,9 @@ function M.get_calls(opts)
 
     local results = utils.extract_results(data)
     local items = vim.tbl_map(make_item, results)
-    items = vim.tbl_filter(function(i) return i ~= nil end, items)
+    items = vim.tbl_filter(function(i)
+      return i ~= nil
+    end, items)
 
     if #items == 0 then
       codanna.notify_empty_results(symbol)
@@ -290,7 +292,9 @@ function M.analyze_impact(opts)
 
     local results = utils.extract_results(data)
     local items = vim.tbl_map(make_item, results)
-    items = vim.tbl_filter(function(i) return i ~= nil end, items)
+    items = vim.tbl_filter(function(i)
+      return i ~= nil
+    end, items)
 
     if #items == 0 then
       codanna.notify_empty_results(symbol)
@@ -310,13 +314,9 @@ end
 function M.documents(opts)
   opts = opts or {}
   MiniPick.start({
-    source = create_live_source(
-      "Codanna: Documents",
-      function(query, o, callback)
-        codanna.search_documents_async(query, { limit = o.limit or 50 }, callback)
-      end,
-      opts
-    ),
+    source = create_live_source("Codanna: Documents", function(query, o, callback)
+      codanna.search_documents_async(query, { limit = o.limit or 50 }, callback)
+    end, opts),
   })
 end
 

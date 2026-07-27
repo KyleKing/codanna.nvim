@@ -142,7 +142,7 @@ function M.make_cache_key(cmd, args)
   if ok then
     return key
   end
-  
+
   -- Fallback: use a delimiter unlikely to appear in arguments
   -- and escape it if it does appear
   local delimiter = "\0" -- null byte, unlikely in normal strings

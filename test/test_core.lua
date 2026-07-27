@@ -17,7 +17,9 @@ local T = new_set({
 
 local core = require("codanna.core")
 local eq = MiniTest.expect.equality
-local is_nil = function(x) MiniTest.expect.equality(x, nil) end
+local is_nil = function(x)
+  MiniTest.expect.equality(x, nil)
+end
 
 -- Cache tests
 T["cache"] = new_set()

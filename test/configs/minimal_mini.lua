@@ -46,7 +46,8 @@ vim.keymap.set("n", "<leader>ms", function()
   require("codanna.mini").semantic_search()
 end, { desc = "mini.pick: Codanna Semantic Search" })
 
-print(string.format([[
+print(string.format(
+  [[
 Codanna.nvim loaded with mini.pick!
 Working directory: %s
 
@@ -69,4 +70,6 @@ Keymaps:
 
 Supported languages: Rust, Python, JS, TS, Go, Java, C, C++, C#, Swift, Kotlin, PHP, GDScript
 Ensure 'codanna index .' was run in this directory first.
-]], vim.fn.getcwd()))
+]],
+  vim.fn.getcwd()
+))

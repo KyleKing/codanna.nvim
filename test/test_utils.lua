@@ -13,7 +13,9 @@ local T = new_set({
 
 local utils = require("codanna.utils")
 local eq = MiniTest.expect.equality
-local is_nil = function(x) MiniTest.expect.equality(x, nil) end
+local is_nil = function(x)
+  MiniTest.expect.equality(x, nil)
+end
 
 -- normalize_result tests
 T["normalize_result()"] = new_set()

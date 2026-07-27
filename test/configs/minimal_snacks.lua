@@ -48,7 +48,8 @@ vim.keymap.set("n", "<leader>ss", function()
   require("snacks.picker").pick("codanna_semantic")
 end, { desc = "Snacks: Codanna Semantic Search" })
 
-print(string.format([[
+print(string.format(
+  [[
 Codanna.nvim loaded with snacks.nvim picker!
 Working directory: %s
 
@@ -71,4 +72,6 @@ Keymaps:
 
 Supported languages: Rust, Python, JS, TS, Go, Java, C, C++, C#, Swift, Kotlin, PHP, GDScript
 Ensure 'codanna index .' was run in this directory first.
-]], vim.fn.getcwd()))
+]],
+  vim.fn.getcwd()
+))

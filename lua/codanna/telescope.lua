@@ -128,9 +128,13 @@ local function create_live_picker(title, search_fn, opts)
       debounce_timer = vim.uv.new_timer()
     end
 
-    debounce_timer:start(M.config.debounce_ms, 0, vim.schedule_wrap(function()
-      do_search(query)
-    end))
+    debounce_timer:start(
+      M.config.debounce_ms,
+      0,
+      vim.schedule_wrap(function()
+        do_search(query)
+      end)
+    )
   end
 
   picker_obj = pickers.new(opts, {
@@ -172,24 +176,16 @@ end
 
 function M.semantic_search(opts)
   opts = opts or {}
-  create_live_picker(
-    "Codanna: Semantic Search",
-    function(query, o, callback)
-      codanna.semantic_search_async(query, { limit = o.limit or 50 }, callback)
-    end,
-    opts
-  )
+  create_live_picker("Codanna: Semantic Search", function(query, o, callback)
+    codanna.semantic_search_async(query, { limit = o.limit or 50 }, callback)
+  end, opts)
 end
 
 function M.search_symbols(opts)
   opts = opts or {}
-  create_live_picker(
-    "Codanna: Search Symbols",
-    function(query, o, callback)
-      codanna.search_symbols_async(query, { limit = o.limit or 50, kind = o.kind }, callback)
-    end,
-    opts
-  )
+  create_live_picker("Codanna: Search Symbols", function(query, o, callback)
+    codanna.search_symbols_async(query, { limit = o.limit or 50, kind = o.kind }, callback)
+  end, opts)
 end
 
 --- Find callers of a symbol
@@ -218,21 +214,23 @@ function M.find_callers(opts)
       codanna.notify_empty_results(symbol)
     end
 
-    pickers.new(opts, {
-      prompt_title = "Codanna: Callers of " .. symbol,
-      finder = finders.new_table({
-        results = results,
-        entry_maker = make_entry,
-      }),
-      sorter = conf.generic_sorter(opts),
-      previewer = conf.file_previewer(opts),
-      attach_mappings = function(prompt_bufnr)
-        actions.select_default:replace(function()
-          goto_selection(prompt_bufnr)
-        end)
-        return true
-      end,
-    }):find()
+    pickers
+      .new(opts, {
+        prompt_title = "Codanna: Callers of " .. symbol,
+        finder = finders.new_table({
+          results = results,
+          entry_maker = make_entry,
+        }),
+        sorter = conf.generic_sorter(opts),
+        previewer = conf.file_previewer(opts),
+        attach_mappings = function(prompt_bufnr)
+          actions.select_default:replace(function()
+            goto_selection(prompt_bufnr)
+          end)
+          return true
+        end,
+      })
+      :find()
   end)
 end
 
@@ -262,21 +260,23 @@ function M.get_calls(opts)
       codanna.notify_empty_results(symbol)
     end
 
-    pickers.new(opts, {
-      prompt_title = "Codanna: Calls from " .. symbol,
-      finder = finders.new_table({
-        results = results,
-        entry_maker = make_entry,
-      }),
-      sorter = conf.generic_sorter(opts),
-      previewer = conf.file_previewer(opts),
-      attach_mappings = function(prompt_bufnr)
-        actions.select_default:replace(function()
-          goto_selection(prompt_bufnr)
-        end)
-        return true
-      end,
-    }):find()
+    pickers
+      .new(opts, {
+        prompt_title = "Codanna: Calls from " .. symbol,
+        finder = finders.new_table({
+          results = results,
+          entry_maker = make_entry,
+        }),
+        sorter = conf.generic_sorter(opts),
+        previewer = conf.file_previewer(opts),
+        attach_mappings = function(prompt_bufnr)
+          actions.select_default:replace(function()
+            goto_selection(prompt_bufnr)
+          end)
+          return true
+        end,
+      })
+      :find()
   end)
 end
 
@@ -306,33 +306,31 @@ function M.analyze_impact(opts)
       codanna.notify_empty_results(symbol)
     end
 
-    pickers.new(opts, {
-      prompt_title = "Codanna: Impact of " .. symbol,
-      finder = finders.new_table({
-        results = results,
-        entry_maker = make_entry,
-      }),
-      sorter = conf.generic_sorter(opts),
-      previewer = conf.file_previewer(opts),
-      attach_mappings = function(prompt_bufnr)
-        actions.select_default:replace(function()
-          goto_selection(prompt_bufnr)
-        end)
-        return true
-      end,
-    }):find()
+    pickers
+      .new(opts, {
+        prompt_title = "Codanna: Impact of " .. symbol,
+        finder = finders.new_table({
+          results = results,
+          entry_maker = make_entry,
+        }),
+        sorter = conf.generic_sorter(opts),
+        previewer = conf.file_previewer(opts),
+        attach_mappings = function(prompt_bufnr)
+          actions.select_default:replace(function()
+            goto_selection(prompt_bufnr)
+          end)
+          return true
+        end,
+      })
+      :find()
   end)
 end
 
 function M.documents(opts)
   opts = opts or {}
-  create_live_picker(
-    "Codanna: Search Documents",
-    function(query, o, callback)
-      codanna.search_documents_async(query, { limit = o.limit or 50 }, callback)
-    end,
-    opts
-  )
+  create_live_picker("Codanna: Search Documents", function(query, o, callback)
+    codanna.search_documents_async(query, { limit = o.limit or 50 }, callback)
+  end, opts)
 end
 
 return M

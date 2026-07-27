@@ -84,10 +84,11 @@ function M.exec(cmd, args, opts)
   -- Validate codanna binary exists (only check once per session)
   if not M._binary_validated then
     if not utils.command_exists(M.config.codanna_path) then
-      return nil, string.format(
-        "codanna binary not found at '%s'. Please install codanna: https://github.com/bartolli/codanna",
-        M.config.codanna_path
-      )
+      return nil,
+        string.format(
+          "codanna binary not found at '%s'. Please install codanna: https://github.com/bartolli/codanna",
+          M.config.codanna_path
+        )
     end
     M._binary_validated = true
   end

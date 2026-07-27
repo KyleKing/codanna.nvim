@@ -20,7 +20,9 @@ local T = new_set({
 local core = require("codanna.core")
 local utils = require("codanna.utils")
 local eq = MiniTest.expect.equality
-local is_nil = function(x) MiniTest.expect.equality(x, nil) end
+local is_nil = function(x)
+  MiniTest.expect.equality(x, nil)
+end
 
 -- Helper to check if we're in a test repo directory
 local function in_test_repo()
@@ -36,15 +38,15 @@ T["semantic_search"]["returns results for valid query"] = function()
     MiniTest.skip("Not in test repo directory")
     return
   end
-  
+
   local data, err = core.semantic_search("function", { limit = 5 })
-  
+
   -- Should not error
   is_nil(err)
-  
+
   -- Should return data
   MiniTest.expect.no_equality(data, nil)
-  
+
   -- Data should be a table or array
   eq(type(data), "table")
 end
@@ -54,9 +56,9 @@ T["semantic_search"]["handles empty query gracefully"] = function()
     MiniTest.skip("Not in test repo directory")
     return
   end
-  
+
   local data, err = core.semantic_search("", { limit = 5 })
-  
+
   -- May error or return empty, both acceptable
   if not err then
     eq(type(data), "table")
@@ -71,9 +73,9 @@ T["search_symbols"]["returns results for valid query"] = function()
     MiniTest.skip("Not in test repo directory")
     return
   end
-  
+
   local data, err = core.search_symbols("main", { limit = 5 })
-  
+
   is_nil(err)
   MiniTest.expect.no_equality(data, nil)
   eq(type(data), "table")
@@ -87,12 +89,12 @@ T["get_index_info"]["returns index information"] = function()
     MiniTest.skip("Not in test repo directory")
     return
   end
-  
+
   local data, err = core.get_index_info()
-  
+
   is_nil(err)
   MiniTest.expect.no_equality(data, nil)
-  
+
   -- Should have symbol_count or file_count
   if data then
     local has_counts = data.symbol_count ~= nil or data.file_count ~= nil
@@ -108,17 +110,17 @@ T["result_extraction"]["extracts and normalizes search results"] = function()
     MiniTest.skip("Not in test repo directory")
     return
   end
-  
+
   local data, err = core.semantic_search("test", { limit = 10 })
-  
+
   if err or not data then
     MiniTest.skip("No data returned from search")
     return
   end
-  
+
   local results = utils.extract_results(data)
   eq(type(results), "table")
-  
+
   -- If we have results, verify normalization works
   if #results > 0 then
     local normalized = utils.normalize_result(results[1])
@@ -145,17 +147,17 @@ T["async_operations"]["semantic_search_async works"] = function()
     MiniTest.skip("Not in test repo directory")
     return
   end
-  
+
   local done = false
   local result_data = nil
   local result_err = nil
-  
+
   core.semantic_search_async("function", { limit = 3 }, function(data, err)
     result_data = data
     result_err = err
     done = true
   end)
-  
+
   -- Wait for async operation (max 5 seconds)
   local timeout = 5000
   local waited = 0
@@ -163,7 +165,7 @@ T["async_operations"]["semantic_search_async works"] = function()
     vim.wait(100)
     waited = waited + 100
   end
-  
+
   eq(done, true)
   is_nil(result_err)
   MiniTest.expect.no_equality(result_data, nil)
@@ -177,21 +179,21 @@ T["cache"]["caches repeated queries"] = function()
     MiniTest.skip("Not in test repo directory")
     return
   end
-  
+
   core.clear_cache()
-  
+
   -- First query - should hit codanna
   local data1, err1 = core.semantic_search("cache_test_query_12345", { limit = 5 })
-  
+
   -- Second identical query - should be cached
   local start_time = vim.uv.now()
   local data2, err2 = core.semantic_search("cache_test_query_12345", { limit = 5 })
   local elapsed = vim.uv.now() - start_time
-  
+
   -- Cached query should be very fast (< 50ms)
   -- This is a heuristic but cached queries should be near-instant
   MiniTest.expect.equality(elapsed < 50, true)
-  
+
   -- Results should be identical (or both nil/error)
   eq(err1, err2)
 end
@@ -204,10 +206,10 @@ T["error_handling"]["handles non-existent symbol gracefully"] = function()
     MiniTest.skip("Not in test repo directory")
     return
   end
-  
+
   -- Query for a symbol that's very unlikely to exist
   local data, err = core.find_callers("nonexistent_symbol_xyz_123456")
-  
+
   -- Should not crash, either returns empty or error
   if err then
     eq(type(err), "string")
