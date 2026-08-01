@@ -33,7 +33,7 @@ local function create_async_finder(search_fn, min_chars)
     local notified_empty = false
     local last_query = ""
 
-    return function(opts, ctx, cb)
+    return function(opts, _ctx, cb)
         local query = ctx.filter.search or ""
         if #query < min_chars then
             notified_empty = false
@@ -72,7 +72,7 @@ end
 --- @param fetch_fn function Function to fetch results: fn(opts, callback)
 --- @return function Snacks finder function
 local function create_static_async_finder(fetch_fn)
-    return function(opts, ctx, cb)
+    return function(opts, _ctx, cb)
         fetch_fn(opts, function(data, err)
             if err then
                 vim.schedule(function() vim.notify("Codanna: " .. err, vim.log.levels.WARN) end)

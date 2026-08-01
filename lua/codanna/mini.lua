@@ -107,7 +107,7 @@ local function create_live_source(name, search_fn, opts)
     return {
         name = name,
         items = {},
-        match = function(stritems, indices, query)
+        match = function(_stritems, _indices, query)
             local query_str = table.concat(query, "")
 
             if query_str ~= last_query then
@@ -138,7 +138,7 @@ local function create_live_source(name, search_fn, opts)
             end
             return result
         end,
-        show = function(buf_id, items_to_show, query)
+        show = function(buf_id, items_to_show, _query)
             local lines = vim.tbl_map(function(item)
                 if item.path then
                     return string.format("%s:%d - %s", vim.fn.fnamemodify(item.path, ":~:."), item.lnum or 1, item.text)
@@ -183,9 +183,9 @@ function M.find_callers(opts)
     local symbol = opts.symbol or vim.fn.expand("<cword>")
 
     -- Validate symbol
-    local valid_symbol, err = utils.validate_symbol(symbol)
-    if err then
-        vim.notify("Codanna: " .. err, vim.log.levels.WARN)
+    local valid_symbol, validate_err = utils.validate_symbol(symbol)
+    if validate_err then
+        vim.notify("Codanna: " .. validate_err, vim.log.levels.WARN)
         return
     end
     symbol = valid_symbol
@@ -220,9 +220,9 @@ function M.get_calls(opts)
     local symbol = opts.symbol or vim.fn.expand("<cword>")
 
     -- Validate symbol
-    local valid_symbol, err = utils.validate_symbol(symbol)
-    if err then
-        vim.notify("Codanna: " .. err, vim.log.levels.WARN)
+    local valid_symbol, validate_err = utils.validate_symbol(symbol)
+    if validate_err then
+        vim.notify("Codanna: " .. validate_err, vim.log.levels.WARN)
         return
     end
     symbol = valid_symbol
@@ -257,9 +257,9 @@ function M.analyze_impact(opts)
     local symbol = opts.symbol or vim.fn.expand("<cword>")
 
     -- Validate symbol
-    local valid_symbol, err = utils.validate_symbol(symbol)
-    if err then
-        vim.notify("Codanna: " .. err, vim.log.levels.WARN)
+    local valid_symbol, validate_err = utils.validate_symbol(symbol)
+    if validate_err then
+        vim.notify("Codanna: " .. validate_err, vim.log.levels.WARN)
         return
     end
     symbol = valid_symbol

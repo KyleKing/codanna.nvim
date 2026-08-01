@@ -175,11 +175,11 @@ T["cache"]["caches repeated queries"] = function()
     core.clear_cache()
 
     -- First query - should hit codanna
-    local data1, err1 = core.semantic_search("cache_test_query_12345", { limit = 5 })
+    local _data1, err1 = core.semantic_search("cache_test_query_12345", { limit = 5 })
 
     -- Second identical query - should be cached
     local start_time = vim.uv.now()
-    local data2, err2 = core.semantic_search("cache_test_query_12345", { limit = 5 })
+    local _data2, err2 = core.semantic_search("cache_test_query_12345", { limit = 5 })
     local elapsed = vim.uv.now() - start_time
 
     -- Cached query should be very fast (< 50ms)

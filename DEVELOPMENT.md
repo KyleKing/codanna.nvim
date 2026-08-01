@@ -29,12 +29,7 @@ Run the unit test suite with:
 mise run test
 ```
 
-This runs all unit tests in `test/` using mini.test from mini.nvim.
-
-You can also run the test script directly:
-```bash
-./scripts/run_tests.sh
-```
+This runs all unit tests in `lua/codanna/tests/` using mini.test from mini.nvim.
 
 ### Integration Tests
 
@@ -97,7 +92,7 @@ The project uses GitHub Actions for continuous integration:
   - Tests against real indexed Flask (Python) and Express (JavaScript) repositories
 - Checks code formatting (on Ubuntu stable only)
 
-See `.github/workflows/test.yml` for configuration.
+See `.github/workflows/ci.yml` for configuration.
 
 ### Linting
 
@@ -119,7 +114,7 @@ mise run format
 codanna.nvim/
 ├── .github/
 │   └── workflows/
-│       └── test.yml          # CI configuration
+│       └── ci.yml            # CI configuration
 ├── lua/
 │   ├── codanna/
 │   │   ├── init.lua          # Main module, picker orchestration
@@ -134,11 +129,13 @@ codanna.nvim/
 ├── plugin/
 │   └── codanna.lua           # User commands registration
 ├── scripts/
-│   ├── minimal_init.lua      # Test initialization for mini.test
-│   └── run_tests.sh          # Test runner script
+│   └── minimal_init.lua      # Test initialization for mini.test
+├── lua/codanna/tests/
+│   ├── init.lua              # mini.test runner
+│   ├── utils_spec.lua        # Unit tests for utils module
+│   └── core_spec.lua         # Unit tests for core module
 ├── test/
-│   ├── test_utils.lua        # Unit tests for utils module
-│   ├── test_core.lua         # Unit tests for core module
+│   ├── test_integration.lua  # Integration tests
 │   └── configs/              # Manual test configs
 │       ├── minimal_telescope.lua
 │       ├── minimal_mini.lua

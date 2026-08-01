@@ -1,6 +1,30 @@
+# OS and Editor
+.DS_Store
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Lua
+luac.out
+
+# Neovim
+lazy-lock.json
+mason-lock.json
+deps/
+# mise
+.mise.local.toml
+
+# Git
+*.rej
+*.orig
+
+# codanna
 *.log
 .codanna/.project-id
 .codanna/index/
+.codannaignore.bak
 .fastembed_cache
 .luarc.json
 .test-deps/

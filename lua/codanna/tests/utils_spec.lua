@@ -187,31 +187,31 @@ end
 
 T["validate_config()"]["rejects negative timeout"] = function()
     local config = { timeout_ms = -100 }
-    local validated, err = utils.validate_config(config)
+    local _validated, err = utils.validate_config(config)
     MiniTest.expect.no_equality(err, nil)
 end
 
 T["validate_config()"]["warns about low timeout"] = function()
     local config = { timeout_ms = 500 }
-    local validated, err = utils.validate_config(config)
+    local _validated, err = utils.validate_config(config)
     MiniTest.expect.no_equality(err, nil)
 end
 
 T["validate_config()"]["rejects non-number timeout"] = function()
     local config = { timeout_ms = "5000" }
-    local validated, err = utils.validate_config(config)
+    local _validated, err = utils.validate_config(config)
     MiniTest.expect.no_equality(err, nil)
 end
 
 T["validate_config()"]["rejects invalid picker name"] = function()
     local config = { preferred_picker = "invalid" }
-    local validated, err = utils.validate_config(config)
+    local _validated, err = utils.validate_config(config)
     MiniTest.expect.no_equality(err, nil)
 end
 
 T["validate_config()"]["warns about high debounce"] = function()
     local config = { debounce_ms = 2000 }
-    local validated, err = utils.validate_config(config)
+    local _validated, err = utils.validate_config(config)
     MiniTest.expect.no_equality(err, nil)
 end
 

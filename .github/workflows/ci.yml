@@ -1,0 +1,186 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v3
+        with:
+          experimental: true
+          cache: true
+
+      - name: Run linters
+        run: mise run lint
+
+      - name: Run type checker
+        run: mise run typecheck
+
+  test-nvim:
+    name: Test (Neovim ${{ matrix.nvim_version }}, ${{ matrix.os }})
+    needs: lint
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        nvim_version: ["stable", "nightly"]
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v3
+        with:
+          experimental: true
+          cache: true
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ matrix.nvim_version }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v5
+        with:
+          path: .test-deps
+          key: ${{ runner.os }}-nvim-deps-${{ hashFiles('mise.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-nvim-deps-
+
+      - name: Install dependencies
+        run: mise run deps
+
+      - name: Run tests
+        run: mise run test
+
+  test-integration:
+    name: Integration tests (${{ matrix.os }})
+    needs: lint
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CODANNA_VERSION: "0.9.13"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v3
+        with:
+          experimental: true
+          cache: true
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+
+      - name: Cache codanna binary
+        id: cache-codanna
+        uses: actions/cache@v5
+        with:
+          path: ~/.local/bin/codanna
+          key: ${{ runner.os }}-${{ runner.arch }}-codanna-${{ env.CODANNA_VERSION }}
+
+      - name: Install codanna CLI from binary
+        if: steps.cache-codanna.outputs.cache-hit != 'true'
+        run: |
+          VERSION="${CODANNA_VERSION}"
+
+          OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          ARCH="$(uname -m)"
+
+          if [ "$OS" = "linux" ]; then
+            PLATFORM="linux-x64"
+          elif [ "$OS" = "darwin" ]; then
+            if [ "$ARCH" = "arm64" ]; then
+              PLATFORM="macos-arm64"
+            else
+              PLATFORM="macos-x64"
+            fi
+          else
+            echo "Unsupported OS: $OS"
+            exit 1
+          fi
+
+          TARBALL="codanna-${VERSION}-${PLATFORM}.tar.xz"
+          URL="https://github.com/bartolli/codanna/releases/download/v${VERSION}/${TARBALL}"
+
+          if ! curl -L -f -o "/tmp/${TARBALL}" "$URL"; then
+            echo "ERROR: Failed to download codanna from $URL"
+            exit 1
+          fi
+
+          # Verify the download before extracting and executing it
+          if ! curl -L -f -o "/tmp/${TARBALL}.sha256" "${URL}.sha256"; then
+            echo "ERROR: Failed to download checksum from ${URL}.sha256"
+            exit 1
+          fi
+          EXPECTED="$(cut -d' ' -f1 "/tmp/${TARBALL}.sha256")"
+          if command -v sha256sum >/dev/null; then
+            ACTUAL="$(sha256sum "/tmp/${TARBALL}" | cut -d' ' -f1)"
+          else
+            ACTUAL="$(shasum -a 256 "/tmp/${TARBALL}" | cut -d' ' -f1)"
+          fi
+          if [ "$EXPECTED" != "$ACTUAL" ]; then
+            echo "ERROR: checksum mismatch"
+            echo "  expected: $EXPECTED"
+            echo "  actual:   $ACTUAL"
+            exit 1
+          fi
+
+          # Every release asset nests its files under a
+          # codanna-<version>-<platform>/ directory
+          mkdir -p ~/.local/bin
+          if ! tar -xf "/tmp/${TARBALL}" -C ~/.local/bin --strip-components=1 "codanna-${VERSION}-${PLATFORM}/codanna"; then
+            echo "ERROR: Failed to extract tarball"
+            tar -tf "/tmp/${TARBALL}" || true
+            exit 1
+          fi
+          chmod +x ~/.local/bin/codanna
+
+      - name: Add codanna to PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Verify codanna installation
+        run: codanna --version
+
+      - name: Cache dependencies
+        uses: actions/cache@v5
+        with:
+          path: .test-deps
+          key: ${{ runner.os }}-nvim-deps-${{ hashFiles('mise.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-nvim-deps-
+
+      - name: Cache test repositories
+        uses: actions/cache@v5
+        with:
+          path: test-repos
+          key: ${{ runner.os }}-test-repos-v2
+          restore-keys: |
+            ${{ runner.os }}-test-repos-
+
+      - name: Run integration tests
+        run: mise run test-integration
