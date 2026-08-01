@@ -1,6 +1,10 @@
-column_width = 120
+# Options: https://github.com/JohnnyMorganz/StyLua?tab=readme-ov-file#options
+# Styleguide: https://github.com/luarocks/lua-style-guide
+
+collapse_simple_statement = "Always"
 indent_type = "Spaces"
-indent_width = 2
+indent_width = 4
+line_endings = "Unix"
 quote_style = "AutoPreferDouble"
 call_parentheses = "Always"
-collapse_simple_statement = "Never"
+column_width = 120

@@ -13,16 +13,14 @@ vim.opt.rtp:append(project_dir)
 -- Add mini.nvim to runtime path
 local mini_path = project_dir .. "/.test-deps/mini.nvim"
 if vim.fn.isdirectory(mini_path) == 1 then
-  vim.opt.rtp:append(mini_path)
+    vim.opt.rtp:append(mini_path)
 else
-  error(string.format("mini.nvim not found at %s. Run 'mise run deps' first.", mini_path))
+    error(string.format("mini.nvim not found at %s. Run 'mise run deps' first.", mini_path))
 end
 
 -- Load mini.test; setup() is what creates the global MiniTest the runners call
 local ok, minitest = pcall(require, "mini.test")
-if not ok then
-  error("Failed to load mini.test. Ensure mini.nvim is properly installed in .test-deps/mini.nvim")
-end
+if not ok then error("Failed to load mini.test. Ensure mini.nvim is properly installed in .test-deps/mini.nvim") end
 minitest.setup()
 
 -- Disable other plugins
