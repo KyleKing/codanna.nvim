@@ -45,8 +45,8 @@ echo "Done! Now run 'mise run test-telescope', 'mise run test-mini', or 'mise ru
 """
 
 [tasks.lint]
-description = "Format code using stylua (check mode)"
-run = "stylua plugin/ lua/ scripts/ test/ --check"
+description = "Check formatting with stylua and lint with selene"
+run = ["stylua plugin/ lua/ scripts/ test/ --check", "selene plugin/ lua/ scripts/ test/"]
 
 [tasks.setup-test-repos]
 description = "Clone and index the pinned test repositories"
@@ -130,8 +130,9 @@ cd ${usage_PROJECT} && $NVIM --clean -u $ROOT/test/configs/minimal_telescope.lua
 """
 
 [tasks.typecheck]
-description = "Check for errors with selene"
-run = "selene plugin/ lua/ scripts/ test/"
+depends = ["deps"]
+description = "Type check with emmylua_check"
+run = "emmylua_check --warnings-as-errors ."
 
 [tools]
 hk = "1.53.0"
@@ -140,3 +141,4 @@ stylua = "2.5.2"
 "cargo:selene" = "0.31.0"
 "pipx:commitizen" = "latest"
 "pipx:toml-sort" = "latest"
+"ubi:EmmyLuaLs/emmylua-analyzer-rust[exe=emmylua_check]" = "0.24.0"

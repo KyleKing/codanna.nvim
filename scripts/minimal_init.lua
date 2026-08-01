@@ -3,7 +3,7 @@
 
 -- Determine the project root directory
 -- This script is in <project>/scripts/minimal_init.lua
-local script_path = debug.getinfo(1, "S").source:sub(2)
+local script_path = assert(debug.getinfo(1, "S")).source:sub(2)
 local script_dir = vim.fn.fnamemodify(script_path, ":h")
 local project_dir = vim.fn.fnamemodify(script_dir, ":h")
 
