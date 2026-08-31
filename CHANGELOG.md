@@ -1,3 +1,9 @@
+## v0.1.1 (2026-08-31)
+
+### Fix
+
+- satisfy emmylua_check across picker modules
+
 ## v0.1.0 (2026-08-31)
 
 ### Feat
