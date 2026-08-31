@@ -1,5 +1,5 @@
 --- Shared utility functions for codanna.nvim
---- @module codanna.utils
+--- Module: codanna.utils
 local M = {}
 
 --- Normalize a result item from various codanna API responses
@@ -104,6 +104,7 @@ function M.validate_config(config)
     end
 
     if config.preferred_picker then
+        --- @type table<string, boolean>
         local valid_pickers = { snacks = true, telescope = true, mini = true }
         if not valid_pickers[config.preferred_picker] then
             table.insert(errors, "preferred_picker must be one of: snacks, telescope, mini")
@@ -117,12 +118,13 @@ end
 
 --- Create a safe cache key that avoids collisions
 --- @param cmd string Command name
---- @param args table Array of arguments
+--- @param args table|nil Array of arguments
 --- @return string Cache key
 function M.make_cache_key(cmd, args)
     -- Use vim.json.encode for reliable serialization
     -- This handles special characters and nested structures
     local ok, key = pcall(vim.json.encode, { cmd = cmd, args = args })
+    --- @cast key string
     if ok then return key end
 
     -- Fallback: use a delimiter unlikely to appear in arguments
@@ -164,6 +166,7 @@ function M.parse_json_response(stdout)
     -- Try to parse JSON
     local ok, parsed = pcall(vim.json.decode, json_str)
     if not ok then return nil, "Failed to parse JSON response: " .. tostring(parsed) end
+    --- @cast parsed table
 
     -- Check for error status in response
     if parsed.status == "error" then return nil, parsed.message or "Unknown error from codanna" end

@@ -1,5 +1,7 @@
+local M = {}
+
 local has_telescope, _ = pcall(require, "telescope")
-if not has_telescope then return {} end
+if not has_telescope then return M end
 
 local pickers = require("telescope.pickers")
 local finders = require("telescope.finders")
@@ -9,8 +11,6 @@ local action_state = require("telescope.actions.state")
 
 local codanna = require("codanna.core")
 local utils = require("codanna.utils")
-
-local M = {}
 
 M.config = {
     debounce_ms = 150,
@@ -53,9 +53,12 @@ end
 local function create_live_picker(title, search_fn, opts)
     opts = opts or {}
     local results = {}
+    --- @type table|nil
     local picker_obj = nil
+    --- @type any
     local debounce_timer = nil
     local last_query = ""
+    --- @type string|nil
     local pending_query = nil
     local notified_empty = false
 
@@ -151,7 +154,7 @@ local function create_live_picker(title, search_fn, opts)
         end,
     })
 
-    picker_obj:find()
+    assert(picker_obj, "picker_obj should be set"):find()
 end
 
 function M.semantic_search(opts)

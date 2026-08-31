@@ -1,6 +1,6 @@
 --- Core module for codanna.nvim
 --- Provides low-level interface to codanna CLI tool
---- @module codanna.core
+--- Module: codanna.core
 
 local utils = require("codanna.utils")
 
@@ -12,14 +12,19 @@ M.config = {
     cache_ttl_ms = 5000,
 }
 
+--- @type boolean|nil
+M._binary_validated = nil
+
 --- Simple LRU cache with maximum size limit
 --- Note: Uses linear search for LRU updates (O(n) on cache hit).
 --- This is acceptable for small cache sizes (100 entries).
 --- For larger caches, consider a doubly-linked list implementation.
+--- @type table<string, {data: table, time: number}>
 local _cache = {}
 local _cache_order = {} -- Track insertion order for LRU
 local MAX_CACHE_SIZE = 100
 
+--- @type table|nil
 local _index_status = nil
 local _index_check_time = 0
 local INDEX_CHECK_INTERVAL_MS = 30000
@@ -110,6 +115,7 @@ function M.exec(cmd, args, opts)
     -- Parse JSON from output (may have log lines before JSON)
     local data, err = utils.parse_json_response(result.stdout)
     if err then return nil, err end
+    --- @cast data table
 
     _set_cached(cache_key, data)
     return data, nil

@@ -1,5 +1,6 @@
 local has_snacks, Snacks = pcall(require, "snacks")
 if not has_snacks then return {} end
+--- @cast Snacks -nil
 
 local codanna = require("codanna.core")
 local utils = require("codanna.utils")
@@ -33,7 +34,7 @@ local function create_async_finder(search_fn, min_chars)
     local notified_empty = false
     local last_query = ""
 
-    return function(opts, _ctx, cb)
+    return function(opts, ctx, cb)
         local query = ctx.filter.search or ""
         if #query < min_chars then
             notified_empty = false

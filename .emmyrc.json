@@ -12,12 +12,15 @@
       "test/configs"
     ],
     "library": [
-      ".test-deps/mini.nvim/lua"
+      ".test-deps/mini.nvim/lua",
+      ".test-deps/telescope.nvim/lua",
+      ".test-deps/snacks.nvim/lua"
     ]
   },
   "diagnostics": {
     "globals": [
-      "MiniTest"
+      "MiniTest",
+      "vim"
     ]
   }
 }

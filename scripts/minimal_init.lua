@@ -21,6 +21,7 @@ end
 -- Load mini.test; setup() is what creates the global MiniTest the runners call
 local ok, minitest = pcall(require, "mini.test")
 if not ok then error("Failed to load mini.test. Ensure mini.nvim is properly installed in .test-deps/mini.nvim") end
+--- @cast minitest -nil
 minitest.setup()
 
 -- Disable other plugins

@@ -31,6 +31,7 @@ T["normalize_result()"]["normalizes result with file_path field"] = function()
         range = { start_line = 10, start_column = 5 },
     }
     local result = utils.normalize_result(input)
+    assert(result, "normalize_result should not be nil")
 
     eq(result.name, "test_func")
     eq(result.kind, "function")
@@ -48,6 +49,7 @@ T["normalize_result()"]["normalizes result with file field"] = function()
         column = 0,
     }
     local result = utils.normalize_result(input)
+    assert(result, "normalize_result should not be nil")
 
     eq(result.name, "TestClass")
     eq(result.kind, "class")
@@ -65,6 +67,7 @@ T["normalize_result()"]["normalizes result with path field"] = function()
         col = 10,
     }
     local result = utils.normalize_result(input)
+    assert(result, "normalize_result should not be nil")
 
     eq(result.name, "MY_CONST")
     eq(result.kind, "constant")
@@ -79,6 +82,7 @@ T["normalize_result()"]["handles nested array format"] = function()
         file = "test.js",
     } }
     local result = utils.normalize_result(input)
+    assert(result, "normalize_result should not be nil")
 
     eq(result.name, "nested_func")
     eq(result.file, "test.js")
@@ -87,6 +91,7 @@ end
 T["normalize_result()"]["uses default values when fields missing"] = function()
     local input = { file = "test.txt" }
     local result = utils.normalize_result(input)
+    assert(result, "normalize_result should not be nil")
 
     eq(result.name, "unknown")
     is_nil(result.kind)
@@ -102,6 +107,7 @@ T["normalize_result()"]["handles missing range fields gracefully"] = function()
         range = {},
     }
     local result = utils.normalize_result(input)
+    assert(result, "normalize_result should not be nil")
 
     eq(result.lnum, 1)
     eq(result.col, 0)
@@ -256,6 +262,7 @@ T["parse_json_response()"]["parses valid JSON response"] = function()
     local stdout = '{"status": "success", "data": {"results": []}}'
     local data, err = utils.parse_json_response(stdout)
     is_nil(err)
+    assert(data, "parse_json_response should not be nil")
     eq(vim.tbl_count(data.results), 0)
 end
 
@@ -267,6 +274,7 @@ T["parse_json_response()"]["handles JSON with log prefix"] = function()
 ]]
     local data, err = utils.parse_json_response(stdout)
     is_nil(err)
+    assert(data, "parse_json_response should not be nil")
     eq(data.count, 5)
 end
 

@@ -1,5 +1,6 @@
 local M = {}
 
+--- @type {codanna_path: string, timeout_ms: number, cache_ttl_ms: number, preferred_picker: string|nil}
 M.config = {
     codanna_path = "codanna",
     timeout_ms = 10000,
@@ -17,17 +18,21 @@ local function get_picker()
         local mod = picker_map[M.config.preferred_picker]
         if mod then
             local ok, picker = pcall(require, mod)
+            --- @cast picker table
             if ok and next(picker) then return picker, M.config.preferred_picker end
         end
     end
 
     local ok, snacks_picker = pcall(require, "codanna.snacks")
+    --- @cast snacks_picker table
     if ok and next(snacks_picker) then return snacks_picker, "snacks" end
 
     local ok2, telescope_picker = pcall(require, "codanna.telescope")
+    --- @cast telescope_picker table
     if ok2 and next(telescope_picker) then return telescope_picker, "telescope" end
 
     local ok3, mini_picker = pcall(require, "codanna.mini")
+    --- @cast mini_picker table
     if ok3 and next(mini_picker) then return mini_picker, "mini" end
 
     return nil, nil
@@ -89,6 +94,7 @@ end
 
 function M.telescope()
     local ok, picker = pcall(require, "codanna.telescope")
+    --- @cast picker table
     if ok and next(picker) then return picker end
     vim.notify("Telescope not available", vim.log.levels.ERROR)
     return {}
@@ -96,6 +102,7 @@ end
 
 function M.mini()
     local ok, picker = pcall(require, "codanna.mini")
+    --- @cast picker table
     if ok and next(picker) then return picker end
     vim.notify("mini.pick not available", vim.log.levels.ERROR)
     return {}
@@ -103,6 +110,7 @@ end
 
 function M.snacks()
     local ok, picker = pcall(require, "codanna.snacks")
+    --- @cast picker table
     if ok and next(picker) then return picker end
     vim.notify("snacks.nvim not available", vim.log.levels.ERROR)
     return {}
@@ -121,7 +129,9 @@ function M.setup(opts)
     })
 
     local ok, snacks_mod = pcall(require, "codanna.snacks")
-    if ok and snacks_mod.setup then snacks_mod.setup() end
+    if not ok then return end
+    --- @cast snacks_mod -nil
+    if snacks_mod.setup then snacks_mod.setup() end
 end
 
 return M

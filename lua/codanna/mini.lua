@@ -1,5 +1,6 @@
 local has_mini_pick, MiniPick = pcall(require, "mini.pick")
 if not has_mini_pick then return {} end
+--- @cast MiniPick -nil
 
 local codanna = require("codanna.core")
 local utils = require("codanna.utils")
@@ -49,8 +50,8 @@ local function file_preview(buf_id, item)
         return
     end
 
-    local start_line = math.max(1, (item.lnum or 1) - 5)
-    local end_line = math.min(#lines, (item.lnum or 1) + 20)
+    local start_line = math.max(1, (item.lnum or 1) - 5) --[[@as integer]]
+    local end_line = math.min(#lines, (item.lnum or 1) + 20) --[[@as integer]]
     local preview_lines = vim.list_slice(lines, start_line, end_line)
 
     vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, preview_lines)
@@ -62,7 +63,9 @@ end
 local function create_live_source(name, search_fn, opts)
     local items = {}
     local last_query = ""
+    --- @type string|nil
     local pending_query = nil
+    --- @type any
     local debounce_timer = nil
     local is_searching = false
     local notified_empty = false
