@@ -1,3 +1,10 @@
+## v0.1.2 (2026-11-05)
+
+### Fix
+
+- migrate test-file task off deprecated Tera flag()
+- surface codanna's stdout error envelope on non-zero exit
+
 ## v0.1.1 (2026-08-31)
 
 ### Fix
