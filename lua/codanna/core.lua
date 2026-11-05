@@ -68,6 +68,27 @@ function M.clear_cache()
     _cache_order = {}
 end
 
+--- Build an error from a finished vim.system result. codanna writes its JSON
+--- error envelope to stdout even on non-zero exit, so stdout is parsed first;
+--- stderr only covers hard failures that produced no envelope.
+--- @param result table vim.system result ({code, stdout, stderr})
+--- @return string
+local function _error_from_result(result)
+    if result.stdout and result.stdout ~= "" then
+        local _, env_err = utils.parse_json_response(result.stdout, result.code)
+        if env_err and env_err:find("^codanna:") then return env_err end
+    end
+
+    local err = result.stderr or ("codanna exited with code " .. result.code)
+    -- Provide more context for common errors
+    if err:find("not found") or err:find("No such file") then
+        err = err .. "\nEnsure codanna is installed and in PATH"
+    elseif err:find("not initialized") or err:find("no index") then
+        err = err .. "\nRun 'codanna init' and 'codanna index .' in your project"
+    end
+    return err
+end
+
 --- Execute codanna command synchronously
 --- @param cmd string Codanna subcommand (e.g., "mcp")
 --- @param args table Array of arguments for the command
@@ -101,16 +122,7 @@ function M.exec(cmd, args, opts)
 
     local result = vim.system(full_args, { text = true, timeout = M.config.timeout_ms }):wait()
 
-    if result.code ~= 0 then
-        local err = result.stderr or ("codanna exited with code " .. result.code)
-        -- Provide more context for common errors
-        if err:find("not found") or err:find("No such file") then
-            err = err .. "\nEnsure codanna is installed and in PATH"
-        elseif err:find("not initialized") or err:find("no index") then
-            err = err .. "\nRun 'codanna init' and 'codanna index .' in your project"
-        end
-        return nil, err
-    end
+    if result.code ~= 0 then return nil, _error_from_result(result) end
 
     -- Parse JSON from output (may have log lines before JSON)
     local data, err = utils.parse_json_response(result.stdout)
@@ -126,6 +138,13 @@ end
 --- @param args table Array of arguments
 --- @param callback function Callback(data, err) called on completion
 function M.exec_async(cmd, args, callback)
+    local cache_key = utils.make_cache_key(cmd, args)
+    local cached = _get_cached(cache_key)
+    if cached then
+        vim.schedule(function() callback(cached, nil) end)
+        return
+    end
+
     -- Validate codanna binary exists
     if not M._binary_validated then
         if not utils.command_exists(M.config.codanna_path) then
@@ -145,19 +164,13 @@ function M.exec_async(cmd, args, callback)
     vim.system(full_args, { text = true, timeout = M.config.timeout_ms }, function(result)
         vim.schedule(function()
             if result.code ~= 0 then
-                local err = result.stderr or ("codanna exited with code " .. result.code)
-                -- Provide more context for common errors
-                if err:find("not found") or err:find("No such file") then
-                    err = err .. "\nEnsure codanna is installed and in PATH"
-                elseif err:find("not initialized") or err:find("no index") then
-                    err = err .. "\nRun 'codanna init' and 'codanna index .' in your project"
-                end
-                callback(nil, err)
+                callback(nil, _error_from_result(result))
                 return
             end
 
             -- Parse JSON from output
             local data, err = utils.parse_json_response(result.stdout)
+            if data then _set_cached(cache_key, data) end
             callback(data, err)
         end)
     end)

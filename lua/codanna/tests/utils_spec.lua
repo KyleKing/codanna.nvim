@@ -312,6 +312,37 @@ T["parse_json_response()"]["handles error status without message"] = function()
     MiniTest.expect.no_equality(err, nil)
 end
 
+T["parse_json_response()"]["error envelope surfaces hint and symbol_id candidates"] = function()
+    local stdout = vim.json.encode({
+        status = "error",
+        exit_code = 2,
+        message = "Ambiguous: found 2 symbol(s) named 'url_for'",
+        hint = "Ambiguous name: re-run with symbol_id:<id>",
+        data = {
+            { id = 221, file_path = "src/helpers.py", line = 195, kind = "Function" },
+            { id = 786, file_path = "src/app.py", line = 1003, kind = "Method" },
+        },
+    })
+    local data, err = utils.parse_json_response(stdout, 2)
+    is_nil(data)
+    MiniTest.expect.no_equality((err or ""):find("symbol_id:221", 1, true), nil)
+    MiniTest.expect.no_equality((err or ""):find("symbol_id:786", 1, true), nil)
+    MiniTest.expect.no_equality((err or ""):find("re%-run with symbol_id"), nil)
+end
+
+T["parse_json_response()"]["non-success statuses are errors too"] = function()
+    local data, err = utils.parse_json_response('{"status": "not_found", "message": "no such symbol"}', 1)
+    is_nil(data)
+    MiniTest.expect.no_equality((err or ""):find("not found"), nil)
+end
+
+T["format_envelope_error()"] = new_set()
+
+T["format_envelope_error()"]["exit_code 7 maps to reindex guidance"] = function()
+    local err = utils.format_envelope_error({ status = "error", exit_code = 7, message = "stale" })
+    MiniTest.expect.no_equality((err or ""):find("codanna index %-%-force"), nil)
+end
+
 -- command_exists tests
 T["command_exists()"] = new_set()
 

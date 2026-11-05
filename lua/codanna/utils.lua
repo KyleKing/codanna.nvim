@@ -139,12 +139,54 @@ function M.make_cache_key(cmd, args)
     return cmd .. delimiter .. table.concat(escaped_args, delimiter)
 end
 
+--- Format candidate symbols from an error envelope's data payload — codanna
+--- lists the ambiguous matches its hint references, and without them the hint
+--- ("re-run with symbol_id:<id>") is not actionable.
+--- @param data any Envelope `data` field
+--- @return string|nil
+local function _ambiguity_candidates(data)
+    if type(data) ~= "table" then return nil end
+    local items = vim.islist(data) and data or data.candidates
+    if type(items) ~= "table" then return nil end
+
+    local candidates = {}
+    for _, item in ipairs(items) do
+        if type(item) == "table" and item.id then
+            local line = type(item.range) == "table" and (item.range.start_line or 0) + 1 or item.line
+            table.insert(
+                candidates,
+                string.format("symbol_id:%s %s:%s %s", item.id, item.file_path or "?", line or "?", item.kind or "")
+            )
+        end
+    end
+    if #candidates == 0 then return nil end
+    return table.concat(candidates, "; ")
+end
+
+--- Build an error string from a codanna JSON envelope. Non-"success" statuses
+--- carry their own kinds ("error", "not_found"); exit_code 7 means the index
+--- predates the binary's format.
+--- @param parsed table Decoded envelope
+--- @param process_code integer|nil Process exit code used when the envelope lacks one
+--- @return string
+function M.format_envelope_error(parsed, process_code)
+    local code = parsed.exit_code or process_code
+    local message = parsed.message or "codanna command failed"
+    if code == 7 then return "codanna: index version mismatch — run `codanna index --force`" end
+    if code == 1 then return string.format("codanna: not found — %s", message) end
+    local detail = parsed.hint and string.format("%s (%s)", message, parsed.hint) or message
+    local candidates = _ambiguity_candidates(parsed.data)
+    if candidates then detail = detail .. "\ncandidates: " .. candidates end
+    return string.format("codanna: error (exit %s): %s", tostring(code or "?"), detail)
+end
+
 --- Parse JSON response from codanna CLI output
 --- Handles cases where output contains non-JSON prefixes (logs, warnings)
 --- @param stdout string Raw stdout from codanna command
+--- @param process_code integer|nil Process exit code, for envelope errors that lack exit_code
 --- @return table|nil Parsed data on success
 --- @return string|nil Error message on failure
-function M.parse_json_response(stdout)
+function M.parse_json_response(stdout, process_code)
     if not stdout or stdout == "" then return nil, "Empty response from codanna" end
 
     local lines = vim.split(stdout, "\n")
@@ -168,8 +210,9 @@ function M.parse_json_response(stdout)
     if not ok then return nil, "Failed to parse JSON response: " .. tostring(parsed) end
     --- @cast parsed table
 
-    -- Check for error status in response
-    if parsed.status == "error" then return nil, parsed.message or "Unknown error from codanna" end
+    -- codanna uses non-"success" statuses for errors too ("not_found" is its own)
+    if parsed.status and parsed.status ~= "success" then return nil, M.format_envelope_error(parsed, process_code) end
+    if parsed.data == vim.NIL then return nil, nil end
 
     return parsed.data, nil
 end
