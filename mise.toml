@@ -82,10 +82,8 @@ run = "nvim --headless --noplugin -u ./scripts/minimal_init.lua -c \"lua local o
 [tasks.test-file]
 depends = ["deps"]
 description = "Run test from specified file"
-run = "nvim --headless --noplugin -u ./scripts/minimal_init.lua -c \"lua local ok, err = pcall(MiniTest.run_file, vim.fn.fnamemodify('{{flag(name='file')}}', ':p')) if not ok then io.stderr:write(tostring(err) .. '\\n') vim.cmd('cquit 1') end\""
-usage = '''
-flag "-f --file"
-'''
+usage = 'flag "-f --file <file>" help="Spec file to run" required=#true'
+run = "nvim --headless --noplugin -u ./scripts/minimal_init.lua -c \"lua local ok, err = pcall(MiniTest.run_file, vim.fn.fnamemodify('${usage_file?}', ':p')) if not ok then io.stderr:write(tostring(err) .. '\\n') vim.cmd('cquit 1') end\""
 
 [tasks.test-integration]
 description = "Run integration tests against real indexed repositories"
